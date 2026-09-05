@@ -1,36 +1,66 @@
+// =========================================================
+// PACKAGE
+// Main OMEN-X JavaFX application package
+// =========================================================
 package com.omenx;
 
+// =========================================================
+// OSINT MODULE IMPORTS
+// Connects Main.java to the individual investigation scanners
+// =========================================================
 import com.omenx.osint.UsernameScanner;
 import com.omenx.osint.DomainScanner;
 import com.omenx.osint.EmailScanner;
-import com.omenx.osint.ImageMetadataScanner;
 
+// =========================================================
+// MODEL / SERVICE / UI IMPORTS
+// Keeps data storage and dedicated UI modules outside Main.java
+// =========================================================
+import com.omenx.model.ScanRecord;
+import com.omenx.service.ScanService;
+import com.omenx.service.ReportService;
+import com.omenx.ui.DashboardUI;
+import com.omenx.ui.ImageMetadataUI;
+import com.omenx.ui.ReverseImageUI;
+
+// =========================================================
+// JAVAFX IMPORTS
+// =========================================================
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Cursor;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+// =========================================================
+// JAVA STANDARD LIBRARY IMPORTS
+// =========================================================
 import java.awt.Desktop;
-import java.io.File;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+
+// =========================================================
+// MAIN APPLICATION
+// =========================================================
 public class Main extends Application {
 
-    // ====================== COLOR SYSTEM ======================
+    // =========================================================
+    // COLOR SYSTEM
+    // Existing OMEN-X dashboard color system
+    // =========================================================
     private static final String BG          = "#0A0E12";
     private static final String PANEL       = "#11161C";
     private static final String SURFACE     = "#161C23";
@@ -47,361 +77,326 @@ public class Main extends Application {
     private static final String PURPLE      = "#A78BFA";
     private static final String CYAN        = "#56B6C2";
 
-    // ====================== STATE ======================
+    // =========================================================
+    // APPLICATION STATE
+    // =========================================================
+
     private final String[] selectedType = {"Username"};
-    private final List<ScanRecord> history = new ArrayList<>();
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    private final ExecutorService executor =
+            Executors.newSingleThreadExecutor();
+
+    // =========================================================
+    // SERVICES
+    // Handles scan history and reports
+    // =========================================================
+
+    private ScanService scanService;
+    private ReportService reportService;
+
+    // =========================================================
+    // UI MODULES
+    // =========================================================
+
+    private DashboardUI dashboardUI;
+    private ImageMetadataUI imageMetadataUI;
+    private ReverseImageUI reverseImageUI;
+
+    // =========================================================
+    // MAIN APPLICATION CONTAINER
+    // =========================================================
 
     private BorderPane root;
+
     private VBox dashboardView;
     private VBox scanView;
 
-    // Scan view controls
+    // =========================================================
+    // INVESTIGATION WORKSPACE CONTROLS
+    // =========================================================
+
     private Label selectedTypeLabel;
     private TextField targetField;
+
     private Button searchButton;
     private Button clearButton;
     private Button exportButton;
+
     private Label foundValue;
     private Label notFoundValue;
     private Label unknownValue;
     private Label scannedValue;
+
     private Label resultsTarget;
+
     private VBox resultsContainer;
     private ScrollPane resultsScroll;
+
     private Label statusBarLabel;
     private Label lastScanLabel;
 
-    // Dashboard labels that update
-    private Label totalScansLabel;
-    private Label findingsLabel;
-    private VBox recentActivityBox;
+
+    // =========================================================
+    // APPLICATION STARTUP
+    // Creates services, UI modules, dashboard and scan workspace
+    // =========================================================
 
     @Override
     public void start(Stage stage) {
-        root = new BorderPane();
-        root.setStyle("-fx-background-color: " + BG + ";");
 
-        // Build both views
-        dashboardView = createDashboard();
-        scanView = createScanView();
+        // =====================================================
+        // INITIALIZE SERVICES
+        // =====================================================
 
-        root.setCenter(dashboardView);
+        scanService =
+                new ScanService();
 
-        Scene scene = new Scene(root, 1240, 820);
-        stage.setTitle("OMEN-X  •  Open Source Intelligence");
+        reportService =
+                new ReportService(
+                        scanService
+                );
+
+        // =====================================================
+        // MAIN ROOT CONTAINER
+        // =====================================================
+
+        root =
+                new BorderPane();
+
+        root.setStyle(
+                "-fx-background-color: " + BG + ";"
+        );
+
+        // =====================================================
+        // INITIALIZE DASHBOARD UI
+        // =====================================================
+
+        dashboardUI =
+                new DashboardUI(
+                        new DashboardUI.ModuleAction() {
+
+                            @Override
+                            public void open(
+                                    String type
+                            ) {
+                                openModule(type);
+                            }
+
+                            @Override
+public void openImageMetadata() {
+    root.setCenter(
+        new ImageMetadataUI(
+            () -> root.setCenter(dashboardView)
+        ).createView()
+    );
+}
+
+                            @Override
+                            public void openReverseImage() {
+                                openReverseImageScanner();
+                            }
+                        }
+                );
+
+        // =====================================================
+        // INITIALIZE IMAGE METADATA UI
+        // =====================================================
+
+        imageMetadataUI =
+                new ImageMetadataUI(
+                        this::showDashboard
+                );
+
+        // =====================================================
+        // INITIALIZE REVERSE IMAGE UI
+        // =====================================================
+
+        reverseImageUI =
+                new ReverseImageUI(
+                        this::showDashboard
+                );
+
+        // =====================================================
+        // BUILD DASHBOARD
+        // =====================================================
+
+        dashboardView =
+                dashboardUI.createDashboard(
+                        scanService.getHistory()
+                );
+
+        // =====================================================
+        // BUILD INVESTIGATION WORKSPACE
+        // =====================================================
+
+        scanView =
+                createScanView();
+
+        // =====================================================
+        // SHOW DASHBOARD
+        // =====================================================
+
+        root.setCenter(
+                dashboardView
+        );
+
+        // =====================================================
+        // CREATE MAIN SCENE
+        // =====================================================
+
+        Scene scene =
+                new Scene(
+                        root,
+                        1240,
+                        820
+                );
+
+        stage.setTitle(
+                "OMEN-X  •  Open Source Intelligence"
+        );
+
+
         stage.setMinWidth(980);
         stage.setMinHeight(680);
+
         stage.setScene(scene);
+
         stage.show();
 
-        stage.setOnCloseRequest(e -> executor.shutdownNow());
-    }
+        // =====================================================
+        // CLEANUP WHEN APPLICATION CLOSES
+        // =====================================================
 
-    // =========================================================
-    // DASHBOARD
-    // =========================================================
+        stage.setOnCloseRequest(
+                e -> {
 
-    private VBox createDashboard() {
-        // Header
-        Label logo = new Label("OMEN-X");
-        logo.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 28px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
+                    executor.shutdownNow();
 
-        Label tagline = new Label("Open Source Intelligence Platform");
-        tagline.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
+                    imageMetadataUI.shutdown();
 
-        Label status = new Label("●  All systems operational");
-        status.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px; -fx-font-weight: bold;");
-
-        HBox headerRight = new HBox(status);
-        headerRight.setAlignment(Pos.CENTER_RIGHT);
-
-        HBox header = new HBox(20, new VBox(4, logo, tagline), headerRight);
-        header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(header.getChildren().get(0), Priority.ALWAYS);
-
-        // Overview metrics
-        totalScansLabel = new Label("0");
-        findingsLabel = new Label("0");
-        Label modulesLabel = new Label("6");
-        Label statusLabel = new Label("Online");
-
-        HBox metrics = new HBox(12,
-                createMetricCard("TOTAL SCANS", totalScansLabel, "Investigations run", BLUE),
-                createMetricCard("FINDINGS", findingsLabel, "Potential matches", GREEN),
-                createMetricCard("MODULES", modulesLabel, "Intelligence sources", PURPLE),
-                createMetricCard("STATUS", statusLabel, "Engine state", YELLOW)
+                    reverseImageUI.shutdown();
+                }
         );
+    }
 
-        // Modules section
-        Label modulesTitle = new Label("Intelligence Modules");
-        modulesTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 15px; -fx-font-weight: bold;");
 
-        Label modulesSub = new Label("Select a module to begin an investigation");
-        modulesSub.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+    // =========================================================
+    // SHOW DASHBOARD
+    // Returns the application to the main dashboard
+    // =========================================================
 
-        GridPane moduleGrid = new GridPane();
-        moduleGrid.setHgap(14);
-        moduleGrid.setVgap(14);
+    private void showDashboard() {
 
-        moduleGrid.add(createModuleCard("Username", "Public profiles & social accounts", GREEN, "Ready", () -> openModule("Username")), 0, 0);
-        moduleGrid.add(createModuleCard("Email", "Breach data & exposure checks", BLUE, "Ready", () -> openModule("Email")), 1, 0);
-        moduleGrid.add(createModuleCard("Domain", "WHOIS, DNS & infrastructure", PURPLE, "Ready", () -> openModule("Domain")), 2, 0);
-        moduleGrid.add(createModuleCard("IP Address", "Geolocation & reputation", YELLOW, "Ready", () -> openModule("IP Address")), 0, 1);
-        moduleGrid.add(createModuleCard("Phone", "Carrier & public records", CYAN, "Ready", () -> openModule("Phone")), 1, 1);
-        moduleGrid.add(createModuleCard("Image Metadata", "EXIF data & GPS location", "#FF8A65", "Ready", this::openImageMetadata), 2, 1);
+        if (dashboardUI != null) {
 
-        VBox modulesSection = new VBox(10, modulesTitle, modulesSub, moduleGrid);
+            dashboardUI.refreshRecentActivity(
+                    scanService.getHistory()
+            );
+        }
 
-        // Recent activity
-        Label recentTitle = new Label("Recent Activity");
-        recentTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 15px; -fx-font-weight: bold;");
-
-        recentActivityBox = new VBox(8);
-        refreshRecentActivity();
-
-        VBox recentSection = new VBox(10, recentTitle, recentActivityBox);
-
-        // Footer notice
-        Label notice = new Label("OMEN-X only uses publicly available information. Always operate within legal and ethical boundaries.");
-        notice.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-        notice.setPadding(new Insets(6, 0, 0, 0));
-
-        VBox content = new VBox(32,
-                header,
-                metrics,
-                modulesSection,
-                recentSection,
-                notice
+        root.setCenter(
+                dashboardView
         );
-        content.setPadding(new Insets(36, 40, 40, 40));
-        content.setStyle("-fx-background-color: " + BG + ";");
-
-        ScrollPane scroll = new ScrollPane(content);
-        scroll.setFitToWidth(true);
-        scroll.setStyle("-fx-background: " + BG + "; -fx-background-color: " + BG + ";");
-        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-
-        VBox wrapper = new VBox(scroll);
-        VBox.setVgrow(scroll, Priority.ALWAYS);
-        return wrapper;
     }
 
-    private void refreshRecentActivity() {
-        recentActivityBox.getChildren().clear();
-
-        if (history.isEmpty()) {
-            Label empty = new Label("No investigations yet. Select a module to get started.");
-            empty.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
-            empty.setPadding(new Insets(12, 0, 0, 0));
-            recentActivityBox.getChildren().add(empty);
-            return;
-        }
-
-        int limit = Math.min(6, history.size());
-        for (int i = history.size() - 1; i >= history.size() - limit; i--) {
-            ScanRecord r = history.get(i);
-            recentActivityBox.getChildren().add(createRecentRow(r));
-        }
-    }
-
-    private HBox createRecentRow(ScanRecord r) {
-        Label type = new Label(r.type);
-        type.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px; -fx-font-weight: bold;");
-        type.setMinWidth(90);
-
-        Label target = new Label(r.target);
-        target.setStyle("-fx-text-fill: " + MUTED_2 + "; -fx-font-size: 12px;");
-        HBox.setHgrow(target, Priority.ALWAYS);
-
-        Label result = new Label(r.found + " found");
-        result.setStyle("-fx-text-fill: " + (r.found > 0 ? GREEN : MUTED) + "; -fx-font-size: 12px;");
-
-        Label time = new Label(r.time);
-        time.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-        time.setMinWidth(70);
-        time.setAlignment(Pos.CENTER_RIGHT);
-
-        HBox row = new HBox(16, type, target, result, time);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(10, 14, 10, 14));
-        row.setStyle(
-                "-fx-background-color: " + PANEL + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 6px;" +
-                "-fx-background-radius: 6px;"
-        );
-        return row;
-    }
 
     // =========================================================
-    // IMAGE METADATA
-    // =========================================================
-
-    private void openImageMetadataView() {
-        root.setCenter(createImageMetadataView());
-    }
-
-    private VBox createImageMetadataView() {
-        // Kept as a separate builder so the dashboard action stays small.
-        Label title = new Label("Image Metadata Scanner");
-        title.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 20px; -fx-font-weight: bold;");
-
-        Button backBtn = createGhostButton("←  Dashboard");
-        backBtn.setOnAction(e -> root.setCenter(dashboardView));
-
-        HBox header = new HBox(16, title, backBtn);
-        header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(title, Priority.ALWAYS);
-
-        Button selectButton = new Button("Select Image…");
-        selectButton.setPrefHeight(40);
-        selectButton.setStyle("-fx-background-color: " + GREEN + "; -fx-text-fill: #0A0E12; -fx-font-weight: bold; -fx-background-radius: 6px; -fx-cursor: hand;");
-
-        Label fileLabel = new Label("No image selected");
-        fileLabel.setStyle("-fx-text-fill: " + MUTED + ";");
-
-        VBox results = new VBox(8, createEmptyState("Select an image to begin metadata analysis."));
-        ScrollPane scroll = new ScrollPane(results);
-        scroll.setFitToWidth(true);
-        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        VBox.setVgrow(scroll, Priority.ALWAYS);
-
-        selectButton.setOnAction(e -> {
-            FileChooser chooser = new FileChooser();
-            chooser.setTitle("Select Image");
-            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
-                    "Image Files", "*.jpg", "*.jpeg", "*.png", "*.tif", "*.tiff", "*.webp", "*.gif"));
-            File file = chooser.showOpenDialog(root.getScene().getWindow());
-            if (file == null) return;
-            fileLabel.setText(file.getName());
-            selectButton.setDisable(true);
-            results.getChildren().setAll(createEmptyState("Reading EXIF and image metadata…"));
-            executor.submit(() -> {
-                ImageMetadataScanner.Result result = new ImageMetadataScanner().scan(file);
-                Platform.runLater(() -> {
-                    renderImageMetadata(results, result);
-                    selectButton.setDisable(false);
-                });
-            });
-        });
-
-        VBox content = new VBox(18, header, new HBox(12, selectButton, fileLabel), scroll);
-        content.setPadding(new Insets(28, 32, 24, 32));
-        content.setStyle("-fx-background-color: " + BG + ";");
-        return content;
-    }
-
-    private void renderImageMetadata(VBox results, ImageMetadataScanner.Result result) {
-        results.getChildren().clear();
-
-        if (result.metadata.isEmpty()) {
-            results.getChildren().add(createEmptyState("No metadata was found."));
-            return;
-        }
-
-        results.getChildren().add(createSectionHeader("FILE INFORMATION"));
-        addMetadataRow(results, "File Name", result.metadata.get("File Name"));
-        addMetadataRow(results, "Source", result.metadata.get("Source"));
-        addMetadataRow(results, "Extension", result.metadata.get("Extension"));
-        addMetadataRow(results, "Size", result.metadata.get("Size"));
-        addMetadataRow(results, "Detected MIME", result.metadata.get("Detected MIME"));
-        addMetadataRow(results, "Signature", result.metadata.get("Signature"));
-        addMetadataRow(results, "Width", result.metadata.get("Width"));
-        addMetadataRow(results, "Height", result.metadata.get("Height"));
-
-        results.getChildren().add(createSectionHeader("CAMERA INFORMATION"));
-        addMetadataRow(results, "Camera Make", result.metadata.get("Camera Make"));
-        addMetadataRow(results, "Camera Model", result.metadata.get("Camera Model"));
-        addMetadataRow(results, "Software", result.metadata.get("Software"));
-        addMetadataRow(results, "Exposure", result.metadata.get("Exposure"));
-        addMetadataRow(results, "F-Number", result.metadata.get("F-Number"));
-        addMetadataRow(results, "ISO", result.metadata.get("ISO"));
-
-        results.getChildren().add(createSectionHeader("DATE & TIME"));
-        addMetadataRow(results, "Date Taken", result.metadata.get("Date Taken"));
-        addMetadataRow(results, "Original Date", result.metadata.get("Original Date"));
-
-        results.getChildren().add(createSectionHeader("GPS INFORMATION"));
-        addMetadataRow(results, "GPS Status", result.hasGps ? "GPS coordinates detected" : "GPS not available");
-        addMetadataRow(results, "Latitude", result.metadata.get("GPS Latitude"));
-        addMetadataRow(results, "Longitude", result.metadata.get("GPS Longitude"));
-
-        if (result.hasGps && result.latitude != null && result.longitude != null) {
-            String coordinates = String.format(Locale.US, "%.6f, %.6f", result.latitude, result.longitude);
-            addMetadataRow(results, "Coordinates", coordinates);
-
-            Button mapButton = new Button("Open Coordinates in Map  →");
-            mapButton.setStyle("-fx-background-color: transparent; -fx-text-fill: " + BLUE + "; -fx-font-size: 12px; -fx-font-weight: bold; -fx-cursor: hand;");
-            mapButton.setOnAction(e -> openUrl("https://www.google.com/maps?q=" + result.latitude + "," + result.longitude));
-            results.getChildren().add(mapButton);
-        }
-
-        if (result.metadata.containsKey("Error")) {
-            results.getChildren().add(createSectionHeader("STATUS"));
-            addMetadataRow(results, "Error", result.metadata.get("Error"));
-        }
-    }
-
-    private void addMetadataRow(VBox results, String label, String value) {
-        String display = (value == null || value.isBlank()) ? "—" : value;
-        Label key = new Label(label);
-        key.setMinWidth(150);
-        key.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
-
-        Label val = new Label(display);
-        val.setWrapText(true);
-        val.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
-        HBox.setHgrow(val, Priority.ALWAYS);
-
-        HBox row = new HBox(16, key, val);
-        row.setAlignment(Pos.TOP_LEFT);
-        row.setPadding(new Insets(9, 14, 9, 14));
-        row.setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 6px; -fx-background-radius: 6px;");
-        results.getChildren().add(row);
-    }
-
-    private String formatFileSize(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return String.format(Locale.US, "%.2f KB", bytes / 1024.0);
-        return String.format(Locale.US, "%.2f MB", bytes / (1024.0 * 1024.0));
-    }
-
-    // =========================================================
-    // SCAN VIEW
+    // INVESTIGATION SCAN VIEW
+    // Builds Username, Email, Domain, IP and Phone workspace
     // =========================================================
 
     private VBox createScanView() {
-        // Header
-        Label title = new Label("OMEN-X");
-        title.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 20px; -fx-font-weight: bold;");
 
-        Label subtitle = new Label("Investigation Workspace");
-        subtitle.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        // =====================================================
+        // HEADER
+        // =====================================================
 
-        Button backBtn = createGhostButton("←  Dashboard");
-        backBtn.setOnAction(e -> {
-            refreshRecentActivity();
-            updateDashboardStats();
-            root.setCenter(dashboardView);
-        });
+        Label title =
+                new Label("OMEN-X");
 
-        Label ready = new Label("● Ready");
-        ready.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px;");
+        title.setStyle(
+                "-fx-text-fill: " + TEXT +
+                "; -fx-font-size: 20px;" +
+                " -fx-font-weight: bold;"
+        );
 
-        HBox headerRight = new HBox(14, backBtn, ready);
-        headerRight.setAlignment(Pos.CENTER_RIGHT);
+        Label subtitle =
+                new Label(
+                        "Investigation Workspace"
+                );
 
-        HBox header = new HBox(16, new VBox(2, title, subtitle), headerRight);
-        header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(header.getChildren().get(0), Priority.ALWAYS);
+        subtitle.setStyle(
+                "-fx-text-fill: " + MUTED +
+                "; -fx-font-size: 12px;"
+        );
 
-        // Search bar
-        selectedTypeLabel = new Label("USERNAME");
+        Button backBtn =
+                createGhostButton(
+                        "←  Dashboard"
+                );
+
+        backBtn.setOnAction(
+                e -> showDashboard()
+        );
+
+        Label ready =
+                new Label(
+                        "● Ready"
+                );
+
+        ready.setStyle(
+                "-fx-text-fill: " + GREEN +
+                "; -fx-font-size: 12px;"
+        );
+
+        HBox headerRight =
+                new HBox(
+                        14,
+                        backBtn,
+                        ready
+                );
+
+        headerRight.setAlignment(
+                Pos.CENTER_RIGHT
+        );
+
+        HBox header =
+                new HBox(
+                        16,
+                        new VBox(
+                                2,
+                                title,
+                                subtitle
+                        ),
+                        headerRight
+                );
+
+        header.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        HBox.setHgrow(
+                header.getChildren().get(0),
+                Priority.ALWAYS
+        );
+
+
+        // =====================================================
+        // MODULE SELECTOR
+        // =====================================================
+
+        selectedTypeLabel =
+                new Label(
+                        "USERNAME"
+                );
+
         selectedTypeLabel.setPrefHeight(42);
         selectedTypeLabel.setMinWidth(130);
-        selectedTypeLabel.setAlignment(Pos.CENTER);
+
+        selectedTypeLabel.setAlignment(
+                Pos.CENTER
+        );
+
         selectedTypeLabel.setStyle(
                 "-fx-background-color: " + SURFACE + ";" +
                 "-fx-text-fill: " + TEXT + ";" +
@@ -412,9 +407,20 @@ public class Main extends Application {
                 "-fx-font-weight: bold;"
         );
 
-        targetField = new TextField();
-        targetField.setPromptText("Enter username…");
+
+        // =====================================================
+        // TARGET INPUT
+        // =====================================================
+
+        targetField =
+                new TextField();
+
+        targetField.setPromptText(
+                "Enter username…"
+        );
+
         targetField.setPrefHeight(42);
+
         targetField.setStyle(
                 "-fx-background-color: " + SURFACE + ";" +
                 "-fx-text-fill: " + TEXT + ";" +
@@ -424,11 +430,23 @@ public class Main extends Application {
                 "-fx-padding: 0 16px;" +
                 "-fx-font-size: 13px;"
         );
-        HBox.setHgrow(targetField, Priority.ALWAYS);
 
-        searchButton = new Button("Scan");
+        HBox.setHgrow(
+                targetField,
+                Priority.ALWAYS
+        );
+
+
+        // =====================================================
+        // SCAN BUTTON
+        // =====================================================
+
+        searchButton =
+                new Button("Scan");
+
         searchButton.setPrefHeight(42);
         searchButton.setPrefWidth(100);
+
         searchButton.setStyle(
                 "-fx-background-color: " + GREEN + ";" +
                 "-fx-text-fill: #0A0E12;" +
@@ -437,267 +455,956 @@ public class Main extends Application {
                 "-fx-background-radius: 0 7px 7px 0;" +
                 "-fx-cursor: hand;"
         );
-        searchButton.setOnAction(e -> runScan());
 
-        targetField.setOnAction(e -> runScan());
-
-        HBox searchBar = new HBox(selectedTypeLabel, targetField, searchButton);
-
-        // Action row
-        clearButton = createGhostButton("Clear");
-        clearButton.setOnAction(e -> clearResults());
-
-        exportButton = createGhostButton("Copy Results");
-        exportButton.setOnAction(e -> copyResults());
-
-        lastScanLabel = new Label("");
-        lastScanLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-
-        HBox actionRow = new HBox(10, clearButton, exportButton, lastScanLabel);
-        actionRow.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(lastScanLabel, Priority.ALWAYS);
-        lastScanLabel.setAlignment(Pos.CENTER_RIGHT);
-
-        // Stats
-        foundValue = new Label("0");
-        notFoundValue = new Label("0");
-        unknownValue = new Label("0");
-        scannedValue = new Label("0");
-
-        HBox stats = new HBox(10,
-                createStatCard("Found", foundValue, GREEN),
-                createStatCard("Not Found", notFoundValue, RED),
-                createStatCard("Unknown", unknownValue, YELLOW),
-                createStatCard("Platforms", scannedValue, TEXT)
+        searchButton.setOnAction(
+                e -> runScan()
         );
 
-        // Results header
-        Label resultsTitle = new Label("Results");
-        resultsTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+        targetField.setOnAction(
+                e -> runScan()
+        );
 
-        resultsTarget = new Label("No target selected");
-        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
 
-        HBox resultsHeader = new HBox(12, resultsTitle, resultsTarget);
-        resultsHeader.setAlignment(Pos.CENTER_LEFT);
+        HBox searchBar =
+                new HBox(
+                        selectedTypeLabel,
+                        targetField,
+                        searchButton
+                );
 
-        // Results container
-        resultsContainer = new VBox(8);
-        resultsContainer.setPadding(new Insets(4, 0, 8, 0));
 
-        Label empty = createEmptyState("Enter a target and press Scan to begin investigation.");
-        resultsContainer.getChildren().add(empty);
+        // =====================================================
+        // ACTION BUTTONS
+        // =====================================================
 
-        resultsScroll = new ScrollPane(resultsContainer);
+        clearButton =
+                createGhostButton(
+                        "Clear"
+                );
+
+        clearButton.setOnAction(
+                e -> clearResults()
+        );
+
+        exportButton =
+                createGhostButton(
+                        "Copy Results"
+                );
+
+        exportButton.setOnAction(
+                e -> copyResults()
+        );
+
+        lastScanLabel =
+                new Label("");
+
+        lastScanLabel.setStyle(
+                "-fx-text-fill: " + MUTED +
+                "; -fx-font-size: 11px;"
+        );
+
+        HBox actionRow =
+                new HBox(
+                        10,
+                        clearButton,
+                        exportButton,
+                        lastScanLabel
+                );
+
+        actionRow.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        HBox.setHgrow(
+                lastScanLabel,
+                Priority.ALWAYS
+        );
+
+        lastScanLabel.setAlignment(
+                Pos.CENTER_RIGHT
+        );
+
+
+        // =====================================================
+        // STATISTICS
+        // =====================================================
+
+        foundValue =
+                new Label("0");
+
+        notFoundValue =
+                new Label("0");
+
+        unknownValue =
+                new Label("0");
+
+        scannedValue =
+                new Label("0");
+
+        HBox stats =
+                new HBox(
+                        10,
+                        createStatCard(
+                                "Found",
+                                foundValue,
+                                GREEN
+                        ),
+                        createStatCard(
+                                "Not Found",
+                                notFoundValue,
+                                RED
+                        ),
+                        createStatCard(
+                                "Unknown",
+                                unknownValue,
+                                YELLOW
+                        ),
+                        createStatCard(
+                                "Platforms",
+                                scannedValue,
+                                TEXT
+                        )
+                );
+
+
+        // =====================================================
+        // RESULTS HEADER
+        // =====================================================
+
+        Label resultsTitle =
+                new Label("Results");
+
+        resultsTitle.setStyle(
+                "-fx-text-fill: " + TEXT +
+                "; -fx-font-size: 14px;" +
+                " -fx-font-weight: bold;"
+        );
+
+        resultsTarget =
+                new Label(
+                        "No target selected"
+                );
+
+        resultsTarget.setStyle(
+                "-fx-text-fill: " + MUTED +
+                "; -fx-font-size: 12px;"
+        );
+
+        HBox resultsHeader =
+                new HBox(
+                        12,
+                        resultsTitle,
+                        resultsTarget
+                );
+
+        resultsHeader.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+
+        // =====================================================
+        // RESULTS CONTAINER
+        // =====================================================
+
+        resultsContainer =
+                new VBox(8);
+
+        resultsContainer.setPadding(
+                new Insets(
+                        4,
+                        0,
+                        8,
+                        0
+                )
+        );
+
+        resultsContainer.getChildren().add(
+                createEmptyState(
+                        "Enter a target and press Scan to begin investigation."
+                )
+        );
+
+        resultsScroll =
+                new ScrollPane(
+                        resultsContainer
+                );
+
         resultsScroll.setFitToWidth(true);
-        resultsScroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        resultsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        resultsScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        VBox.setVgrow(resultsScroll, Priority.ALWAYS);
 
-        // Status bar
-        statusBarLabel = new Label("Ready");
-        statusBarLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-
-        HBox statusBar = new HBox(statusBarLabel);
-        statusBar.setPadding(new Insets(8, 0, 0, 0));
-        statusBar.setStyle("-fx-border-color: " + BORDER + " transparent transparent transparent; -fx-border-width: 1 0 0 0;");
-
-        VBox content = new VBox(20,
-                header,
-                searchBar,
-                actionRow,
-                stats,
-                resultsHeader,
-                resultsScroll,
-                statusBar
+        resultsScroll.setStyle(
+                "-fx-background: transparent;" +
+                "-fx-background-color: transparent;"
         );
-        content.setPadding(new Insets(28, 32, 24, 32));
-        content.setStyle("-fx-background-color: " + BG + ";");
-        VBox.setVgrow(resultsScroll, Priority.ALWAYS);
+
+        resultsScroll.setHbarPolicy(
+                ScrollPane.ScrollBarPolicy.NEVER
+        );
+
+        resultsScroll.setVbarPolicy(
+                ScrollPane.ScrollBarPolicy.AS_NEEDED
+        );
+
+        VBox.setVgrow(
+                resultsScroll,
+                Priority.ALWAYS
+        );
+
+
+        // =====================================================
+        // STATUS BAR
+        // =====================================================
+
+        statusBarLabel =
+                new Label("Ready");
+
+        statusBarLabel.setStyle(
+                "-fx-text-fill: " + MUTED +
+                "; -fx-font-size: 11px;"
+        );
+
+        HBox statusBar =
+                new HBox(
+                        statusBarLabel
+                );
+
+        statusBar.setPadding(
+                new Insets(
+                        8,
+                        0,
+                        0,
+                        0
+                )
+        );
+
+        statusBar.setStyle(
+                "-fx-border-color: " +
+                BORDER +
+                " transparent transparent transparent;" +
+                "-fx-border-width: 1 0 0 0;"
+        );
+
+
+        // =====================================================
+        // FINAL CONTENT
+        // =====================================================
+
+        VBox content =
+                new VBox(
+                        20,
+                        header,
+                        searchBar,
+                        actionRow,
+                        stats,
+                        resultsHeader,
+                        resultsScroll,
+                        statusBar
+                );
+
+        content.setPadding(
+                new Insets(
+                        28,
+                        32,
+                        24,
+                        32
+                )
+        );
+
+        content.setStyle(
+                "-fx-background-color: " + BG + ";"
+        );
+
+        VBox.setVgrow(
+                resultsScroll,
+                Priority.ALWAYS
+        );
 
         return content;
     }
 
+
     // =========================================================
-    // ACTIONS
+    // OPEN MODULE
+    // Selects Username / Email / Domain / IP / Phone
     // =========================================================
 
-    private void openModule(String type) {
-        selectedType[0] = type;
-        selectedTypeLabel.setText(type.toUpperCase());
+    private void openModule(
+            String type
+    ) {
+
+        selectedType[0] =
+                type;
+
+        selectedTypeLabel.setText(
+                type.toUpperCase()
+        );
 
         switch (type) {
-            case "Email"      -> targetField.setPromptText("Enter email address…");
-            case "Domain"     -> targetField.setPromptText("Enter domain name…");
-            case "IP Address" -> targetField.setPromptText("Enter IP address…");
-            case "Phone"      -> targetField.setPromptText("Enter phone number…");
-            default           -> targetField.setPromptText("Enter username…");
+
+            case "Email" ->
+                    targetField.setPromptText(
+                            "Enter email address…"
+                    );
+
+            case "Domain" ->
+                    targetField.setPromptText(
+                            "Enter domain name…"
+                    );
+
+            case "IP Address" ->
+                    targetField.setPromptText(
+                            "Enter IP address…"
+                    );
+
+            case "Phone" ->
+                    targetField.setPromptText(
+                            "Enter phone number…"
+                    );
+
+            default ->
+                    targetField.setPromptText(
+                            "Enter username…"
+                    );
         }
 
         targetField.clear();
+
         clearResults();
-        root.setCenter(scanView);
+
+        root.setCenter(
+                scanView
+        );
+
         targetField.requestFocus();
     }
 
+
+    // =========================================================
+    // OPEN IMAGE METADATA MODULE
+    // Delegates the UI to ImageMetadataUI
+    // =========================================================
+
+    private void openImageMetadata() {
+
+        root.setCenter(
+                imageMetadataUI.createView()
+        );
+    }
+
+
+    // =========================================================
+    // OPEN REVERSE IMAGE MODULE
+    // Delegates the UI to ReverseImageUI
+    // =========================================================
+
+    private void openReverseImageScanner() {
+
+        root.setCenter(
+                reverseImageUI.createView()
+        );
+    }
+
+
+    // =========================================================
+    // RUN SCAN
+    // Executes the selected scanner in the background
+    // =========================================================
+
     private void runScan() {
-        String type = selectedType[0];
-        String target = targetField.getText().trim();
+
+        String type =
+                selectedType[0];
+
+        String target =
+                targetField
+                        .getText()
+                        .trim();
+
+        // =====================================================
+        // VALIDATE TARGET
+        // =====================================================
 
         if (target.isEmpty()) {
-            setStatus("Please enter a target", RED);
-            resultsContainer.getChildren().clear();
-            resultsContainer.getChildren().add(createEmptyState("Target cannot be empty."));
+
+            setStatus(
+                    "Please enter a target",
+                    RED
+            );
+
+            resultsContainer
+                    .getChildren()
+                    .clear();
+
+            resultsContainer
+                    .getChildren()
+                    .add(
+                            createEmptyState(
+                                    "Target cannot be empty."
+                            )
+                    );
+
             return;
         }
 
-        // UI loading state
+
+        // =====================================================
+        // LOADING STATE
+        // =====================================================
+
         searchButton.setDisable(true);
+
         searchButton.setText("…");
-        setStatus("Scanning " + target + "…", GREEN);
-        resultsContainer.getChildren().clear();
-        resultsContainer.getChildren().add(createEmptyState("Analyzing publicly available sources…"));
-        resultsTarget.setText(target);
+
+        setStatus(
+                "Scanning " + target + "…",
+                GREEN
+        );
+
+        resultsContainer
+                .getChildren()
+                .clear();
+
+        resultsContainer
+                .getChildren()
+                .add(
+                        createEmptyState(
+                                "Analyzing publicly available sources…"
+                        )
+                );
+
+        resultsTarget.setText(
+                target
+        );
 
         foundValue.setText("0");
         notFoundValue.setText("0");
         unknownValue.setText("0");
         scannedValue.setText("0");
 
+
+        // =====================================================
+        // BACKGROUND SCAN
+        // =====================================================
+
         executor.submit(() -> {
+
             Map<String, String> scanResults;
 
             try {
+
+                // =================================================
+                // USERNAME SCANNER
+                // =================================================
+
                 if ("Username".equals(type)) {
-    UsernameScanner scanner = new UsernameScanner();
-    scanResults = scanner.scan(target);
-} else if ("Email".equals(type)) {
-    EmailScanner scanner = new EmailScanner();
-    String emailResult = scanner.scan(target);
-    scanResults = new LinkedHashMap<>();
-    scanResults.put("Email Intelligence", emailResult);
-} else if ("Domain".equals(type)) {
-    DomainScanner scanner = new DomainScanner();
-    scanResults = scanner.scan(target);
-} else {
-    scanResults = new LinkedHashMap<>();
-    scanResults.put(type + " Intelligence",
-            "UNKNOWN | This intelligence module is not fully connected yet.");
-}
+
+                    UsernameScanner scanner =
+                            new UsernameScanner();
+
+                    scanResults =
+                            scanner.scan(target);
+                }
+
+                // =================================================
+                // EMAIL SCANNER
+                // =================================================
+
+                else if ("Email".equals(type)) {
+
+                    EmailScanner scanner =
+                            new EmailScanner();
+
+                    String emailResult =
+                            scanner.scan(target);
+
+                    scanResults =
+                            new LinkedHashMap<>();
+
+                    scanResults.put(
+                            "Email Intelligence",
+                            emailResult
+                    );
+                }
+
+                // =================================================
+                // DOMAIN SCANNER
+                // =================================================
+
+                else if ("Domain".equals(type)) {
+
+                    DomainScanner scanner =
+                            new DomainScanner();
+
+                    scanResults =
+                            scanner.scan(target);
+                }
+
+                // =================================================
+                // OTHER MODULES
+                // =================================================
+
+                else {
+
+                    scanResults =
+                            new LinkedHashMap<>();
+
+                    scanResults.put(
+                            type + " Intelligence",
+                            "UNKNOWN | This intelligence module is not fully connected yet."
+                    );
+                }
+
             } catch (Exception ex) {
-                scanResults = new LinkedHashMap<>();
-                scanResults.put("Error", "UNKNOWN | " + ex.getMessage());
+
+                scanResults =
+                        new LinkedHashMap<>();
+
+                scanResults.put(
+                        "Error",
+                        "UNKNOWN | " +
+                        ex.getMessage()
+                );
             }
 
-            Map<String, String> finalResults = scanResults;
+
+            Map<String, String> finalResults =
+                    scanResults;
+
+
+            // =====================================================
+            // RETURN TO JAVAFX THREAD
+            // =====================================================
 
             Platform.runLater(() -> {
-                renderResults(finalResults, type, target);
+
+                renderResults(
+                        finalResults,
+                        type,
+                        target
+                );
+
                 searchButton.setDisable(false);
-                searchButton.setText("Scan");
+
+                searchButton.setText(
+                        "Scan"
+                );
             });
         });
     }
 
-      private void renderResults(Map<String, String> scanResults, String type, String target) {
-        resultsContainer.getChildren().clear();
 
-        int found = 0, notFound = 0, unknown = 0;
+    // =========================================================
+    // RENDER RESULTS
+    // Converts scanner results into visual result rows
+    // =========================================================
+
+    private void renderResults(
+            Map<String, String> scanResults,
+            String type,
+            String target
+    ) {
+
+        resultsContainer
+                .getChildren()
+                .clear();
+
+        int found = 0;
+        int notFound = 0;
+        int unknown = 0;
+
+
+        // =====================================================
+        // DOMAIN RESULTS
+        // =====================================================
 
         if ("Domain".equals(type)) {
-            renderDomainResults(scanResults);
 
-            found = (int) scanResults.values().stream()
-                    .filter(v -> v != null && !v.isBlank()).count();
+            renderDomainResults(
+                    scanResults
+            );
+
+            found =
+                    (int)
+                    scanResults
+                            .values()
+                            .stream()
+                            .filter(
+                                    v ->
+                                            v != null &&
+                                            !v.isBlank()
+                            )
+                            .count();
+
             unknown = 1;
-        } else {
+        }
+
+        // =====================================================
+        // NORMAL RESULTS
+        // =====================================================
+
+        else {
+
             if (scanResults.isEmpty()) {
-                resultsContainer.getChildren().add(createEmptyState("No results returned."));
+
+                resultsContainer
+                        .getChildren()
+                        .add(
+                                createEmptyState(
+                                        "No results returned."
+                                )
+                        );
+
             } else {
-                for (Map.Entry<String, String> entry : scanResults.entrySet()) {
-                    String platform = entry.getKey();
-                    String result = entry.getValue();
 
-                    if (result.startsWith("FOUND")) found++;
-                    else if (result.startsWith("NOT FOUND")) notFound++;
-                    else unknown++;
+                for (
+                        Map.Entry<String, String> entry :
+                        scanResults.entrySet()
+                ) {
 
-                    resultsContainer.getChildren().add(createResultRow(platform, result));
+                    String platform =
+                            entry.getKey();
+
+                    String result =
+                            entry.getValue();
+
+                    if (
+                            result != null &&
+                            result.startsWith("FOUND")
+                    ) {
+
+                        found++;
+
+                    } else if (
+                            result != null &&
+                            result.startsWith("NOT FOUND")
+                    ) {
+
+                        notFound++;
+
+                    } else {
+
+                        unknown++;
+                    }
+
+                    resultsContainer
+                            .getChildren()
+                            .add(
+                                    createResultRow(
+                                            platform,
+                                            result
+                                    )
+                            );
                 }
             }
         }
 
-        foundValue.setText(String.valueOf(found));
-        notFoundValue.setText(String.valueOf(notFound));
-        unknownValue.setText(String.valueOf(unknown));
-        scannedValue.setText(String.valueOf(scanResults.size()));
 
-        String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm"));
-        history.add(new ScanRecord(type, target, found, time));
-        if (history.size() > 30) history.remove(0);
+        // =====================================================
+        // UPDATE STATISTICS
+        // =====================================================
 
-        lastScanLabel.setText("Last scan  •  " + time);
-        setStatus("Scan complete  •  " + found + " found", GREEN);
+        foundValue.setText(
+                String.valueOf(found)
+        );
+
+        notFoundValue.setText(
+                String.valueOf(notFound)
+        );
+
+        unknownValue.setText(
+                String.valueOf(unknown)
+        );
+
+        scannedValue.setText(
+                String.valueOf(
+                        scanResults.size()
+                )
+        );
+
+
+        // =====================================================
+        // SAVE SCAN TO DATABASE
+        // =====================================================
+
+        String time =
+                LocalDateTime
+                        .now()
+                        .format(
+                                DateTimeFormatter.ofPattern(
+                                        "HH:mm"
+                                )
+                        );
+
+        scanService.saveScan(
+                type,
+                target,
+                found,
+                time
+        );
+
+
+        // =====================================================
+        // UPDATE STATUS
+        // =====================================================
+
+        lastScanLabel.setText(
+                "Last scan  •  " + time
+        );
+
+        setStatus(
+                "Scan complete  •  " +
+                found +
+                " found",
+                GREEN
+        );
     }
 
-    private void renderDomainResults(Map<String, String> data) {
+
+    // =========================================================
+    // DOMAIN RESULTS
+    // Displays detailed DomainScanner information
+    // =========================================================
+
+    private void renderDomainResults(
+            Map<String, String> data
+    ) {
+
         if (data.containsKey("error")) {
-            resultsContainer.getChildren().add(createEmptyState(data.get("error")));
+
+            resultsContainer
+                    .getChildren()
+                    .add(
+                            createEmptyState(
+                                    data.get("error")
+                            )
+                    );
+
             return;
         }
 
-        resultsContainer.getChildren().add(createSectionHeader("Domain Information"));
-        addDomainRow("Domain", data.get("domain"));
 
-        resultsContainer.getChildren().add(createSectionHeader("DNS Records"));
-        addDomainRow("A Records", data.get("dns_a"));
-        addDomainRow("MX Records", data.get("dns_mx"));
-        addDomainRow("NS Records", data.get("dns_ns"));
-        addDomainRow("TXT Records", data.get("dns_txt"));
-        addDomainRow("CNAME", data.get("dns_cname"));
+        resultsContainer
+                .getChildren()
+                .add(
+                        createSectionHeader(
+                                "Domain Information"
+                        )
+                );
 
-        resultsContainer.getChildren().add(createSectionHeader("Web Presence"));
-        addDomainRow("HTTPS", data.get("https"));
-        addDomainRow("HTTP", data.get("http"));
+        addDomainRow(
+                "Domain",
+                data.get("domain")
+        );
 
-        resultsContainer.getChildren().add(createSectionHeader("SSL Certificate"));
-        addDomainRow("Subject", data.get("ssl_subject"));
-        addDomainRow("Issuer", data.get("ssl_issuer"));
-        addDomainRow("Validity", data.get("ssl_validity"));
 
-        resultsContainer.getChildren().add(createSectionHeader("Common Subdomains"));
-        addDomainRow("Found", data.get("subdomains"));
+        resultsContainer
+                .getChildren()
+                .add(
+                        createSectionHeader(
+                                "DNS Records"
+                        )
+                );
 
-        resultsContainer.getChildren().add(createSectionHeader("WHOIS"));
-        addDomainRow("Registrar", data.get("whois_registrar"));
-        addDomainRow("Organization", data.get("whois_org"));
-        addDomainRow("Created", data.get("whois_created"));
-        addDomainRow("Expires", data.get("whois_expires"));
-        addDomainRow("Updated", data.get("whois_updated"));
-        addDomainRow("WHOIS Server", data.get("whois_server"));
+        addDomainRow(
+                "A Records",
+                data.get("dns_a")
+        );
 
-        resultsContainer.getChildren().add(createSectionHeader("Reputation"));
-        addDomainRow("Blacklist Status", data.get("reputation"));
+        addDomainRow(
+                "MX Records",
+                data.get("dns_mx")
+        );
+
+        addDomainRow(
+                "NS Records",
+                data.get("dns_ns")
+        );
+
+        addDomainRow(
+                "TXT Records",
+                data.get("dns_txt")
+        );
+
+        addDomainRow(
+                "CNAME",
+                data.get("dns_cname")
+        );
+
+
+        resultsContainer
+                .getChildren()
+                .add(
+                        createSectionHeader(
+                                "Web Presence"
+                        )
+                );
+
+        addDomainRow(
+                "HTTPS",
+                data.get("https")
+        );
+
+        addDomainRow(
+                "HTTP",
+                data.get("http")
+        );
+
+
+        resultsContainer
+                .getChildren()
+                .add(
+                        createSectionHeader(
+                                "SSL Certificate"
+                        )
+                );
+
+        addDomainRow(
+                "Subject",
+                data.get("ssl_subject")
+        );
+
+        addDomainRow(
+                "Issuer",
+                data.get("ssl_issuer")
+        );
+
+        addDomainRow(
+                "Validity",
+                data.get("ssl_validity")
+        );
+
+
+        resultsContainer
+                .getChildren()
+                .add(
+                        createSectionHeader(
+                                "Common Subdomains"
+                        )
+                );
+
+        addDomainRow(
+                "Found",
+                data.get("subdomains")
+        );
+
+
+        resultsContainer
+                .getChildren()
+                .add(
+                        createSectionHeader(
+                                "WHOIS"
+                        )
+                );
+
+        addDomainRow(
+                "Registrar",
+                data.get("whois_registrar")
+        );
+
+        addDomainRow(
+                "Organization",
+                data.get("whois_org")
+        );
+
+        addDomainRow(
+                "Created",
+                data.get("whois_created")
+        );
+
+        addDomainRow(
+                "Expires",
+                data.get("whois_expires")
+        );
+
+        addDomainRow(
+                "Updated",
+                data.get("whois_updated")
+        );
+
+        addDomainRow(
+                "WHOIS Server",
+                data.get("whois_server")
+        );
+
+
+        resultsContainer
+                .getChildren()
+                .add(
+                        createSectionHeader(
+                                "Reputation"
+                        )
+                );
+
+        addDomainRow(
+                "Blacklist Status",
+                data.get("reputation")
+        );
     }
 
-    private void addDomainRow(String label, String value) {
-        if (value == null || value.isBlank()) {
+
+    // =========================================================
+    // DOMAIN RESULT ROW
+    // =========================================================
+
+    private void addDomainRow(
+            String label,
+            String value
+    ) {
+
+        if (
+                value == null ||
+                value.isBlank()
+        ) {
+
             value = "—";
         }
 
-        Label key = new Label(label);
-        key.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        Label key =
+                new Label(label);
+
+        key.setStyle(
+                "-fx-text-fill: " + MUTED +
+                "; -fx-font-size: 12px;"
+        );
+
         key.setMinWidth(130);
 
-        Label val = new Label(value);
-        val.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
-        val.setWrapText(true);
-        HBox.setHgrow(val, Priority.ALWAYS);
 
-        HBox row = new HBox(16, key, val);
-        row.setAlignment(Pos.TOP_LEFT);
-        row.setPadding(new Insets(8, 14, 8, 14));
+        Label val =
+                new Label(value);
+
+        val.setStyle(
+                "-fx-text-fill: " + TEXT +
+                "; -fx-font-size: 12px;"
+        );
+
+        val.setWrapText(true);
+
+        HBox.setHgrow(
+                val,
+                Priority.ALWAYS
+        );
+
+
+        HBox row =
+                new HBox(
+                        16,
+                        key,
+                        val
+                );
+
+        row.setAlignment(
+                Pos.TOP_LEFT
+        );
+
+        row.setPadding(
+                new Insets(
+                        8,
+                        14,
+                        8,
+                        14
+                )
+        );
+
         row.setStyle(
                 "-fx-background-color: " + SURFACE + ";" +
                 "-fx-border-color: " + BORDER + ";" +
@@ -705,468 +1412,611 @@ public class Main extends Application {
                 "-fx-background-radius: 6px;"
         );
 
-        resultsContainer.getChildren().add(row);
+        resultsContainer
+                .getChildren()
+                .add(row);
     }
 
-    private Label createSectionHeader(String title) {
-        Label header = new Label(title);
-        header.setStyle(
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-font-size: 13px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-padding: 16 0 6 2;"
-        );
-        return header;
-    }
+
+    // =========================================================
+    // CLEAR RESULTS
+    // =========================================================
 
     private void clearResults() {
-        resultsContainer.getChildren().clear();
-        resultsContainer.getChildren().add(createEmptyState("Enter a target and press Scan to begin investigation."));
-        resultsTarget.setText("No target selected");
+
+        resultsContainer
+                .getChildren()
+                .clear();
+
+        resultsContainer
+                .getChildren()
+                .add(
+                        createEmptyState(
+                                "Enter a target and press Scan to begin investigation."
+                        )
+                );
+
+        resultsTarget.setText(
+                "No target selected"
+        );
+
         foundValue.setText("0");
         notFoundValue.setText("0");
         unknownValue.setText("0");
         scannedValue.setText("0");
+
         lastScanLabel.setText("");
-        setStatus("Ready", MUTED);
+
+        setStatus(
+                "Ready",
+                MUTED
+        );
     }
 
+
+    // =========================================================
+    // COPY RESULTS
+    // Copies the current investigation results
+    // =========================================================
+
     private void copyResults() {
-        if (resultsContainer.getChildren().isEmpty()) return;
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("OMEN-X Scan Results\n");
-        sb.append("Target: ").append(resultsTarget.getText()).append("\n");
-        sb.append("----------------------------------------\n");
+        if (
+                resultsContainer
+                        .getChildren()
+                        .isEmpty()
+        ) {
 
-        for (var node : resultsContainer.getChildren()) {
-            if (node instanceof VBox box && !box.getChildren().isEmpty()) {
-                // simple extraction
-                sb.append(box.toString()).append("\n");
-            }
+            return;
         }
 
-        // Better extraction
-        sb = new StringBuilder();
-        sb.append("OMEN-X • ").append(selectedType[0]).append(" scan\n");
-        sb.append("Target: ").append(resultsTarget.getText()).append("\n\n");
+        StringBuilder sb =
+                new StringBuilder();
 
-        for (var node : resultsContainer.getChildren()) {
-            if (node instanceof VBox outer && !outer.getChildren().isEmpty()
-                    && outer.getChildren().get(0) instanceof HBox row) {
-                // We store platform + status in the row
-                for (var child : row.getChildren()) {
-                    if (child instanceof VBox left && left.getChildren().size() >= 2) {
-                        Label p = (Label) left.getChildren().get(0);
-                        Label s = (Label) left.getChildren().get(1);
-                        sb.append(p.getText()).append("  →  ").append(s.getText()).append("\n");
+        sb.append(
+                "OMEN-X • "
+        )
+        .append(
+                selectedType[0]
+        )
+        .append(
+                " scan\n"
+        );
+
+        sb.append(
+                "Target: "
+        )
+        .append(
+                resultsTarget.getText()
+        )
+        .append(
+                "\n\n"
+        );
+
+
+        for (
+                var node :
+                resultsContainer.getChildren()
+        ) {
+
+            if (
+                    node instanceof VBox outer &&
+                    !outer.getChildren().isEmpty() &&
+                    outer.getChildren().get(0)
+                            instanceof HBox row
+            ) {
+
+                for (
+                        var child :
+                        row.getChildren()
+                ) {
+
+                    if (
+                            child instanceof VBox left &&
+                            left.getChildren().size() >= 2
+                    ) {
+
+                        Label platform =
+                                (Label)
+                                left.getChildren()
+                                        .get(0);
+
+                        Label status =
+                                (Label)
+                                left.getChildren()
+                                        .get(1);
+
+                        sb.append(
+                                platform.getText()
+                        )
+                        .append(
+                                "  →  "
+                        )
+                        .append(
+                                status.getText()
+                        )
+                        .append(
+                                "\n"
+                        );
                     }
                 }
             }
         }
 
-        ClipboardContent content = new ClipboardContent();
-        content.putString(sb.toString());
-        Clipboard.getSystemClipboard().setContent(content);
-        setStatus("Results copied to clipboard", GREEN);
+
+        ClipboardContent content =
+                new ClipboardContent();
+
+        content.putString(
+                sb.toString()
+        );
+
+        Clipboard
+                .getSystemClipboard()
+                .setContent(content);
+
+        setStatus(
+                "Results copied to clipboard",
+                GREEN
+        );
     }
 
-    private void updateDashboardStats() {
-        totalScansLabel.setText(String.valueOf(history.size()));
-        int totalFound = history.stream().mapToInt(r -> r.found).sum();
-        findingsLabel.setText(String.valueOf(totalFound));
-    }
-
-    private void setStatus(String text, String color) {
-        statusBarLabel.setText(text);
-        statusBarLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 11px;");
-    }
 
     // =========================================================
-    // UI BUILDERS
+    // STATUS
     // =========================================================
 
-    private VBox createMetricCard(String title, Label value, String desc, String accent) {
-        Label t = new Label(title);
-        t.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px; -fx-font-weight: bold;");
+    private void setStatus(
+            String text,
+            String color
+    ) {
 
-        value.setStyle("-fx-text-fill: " + accent + "; -fx-font-size: 24px; -fx-font-weight: bold;");
-
-        Label d = new Label(desc);
-        d.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-        d.setWrapText(true);
-
-        VBox card = new VBox(6, t, value, d);
-        card.setPrefWidth(210);
-        card.setPrefHeight(100);
-        card.setPadding(new Insets(16));
-        card.setStyle(
-                "-fx-background-color: " + PANEL + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 8px;" +
-                "-fx-background-radius: 8px;"
-        );
-        return card;
-    }
-
-    private VBox createModuleCard(String title, String desc, String accent, String status, Runnable action) {
-        Label t = new Label(title);
-        t.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
-
-        Label d = new Label(desc);
-        d.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
-        d.setWrapText(true);
-
-        Label s = new Label("●  " + status);
-        s.setStyle("-fx-text-fill: " + accent + "; -fx-font-size: 11px;");
-
-        Button open = new Button("Open module  →");
-        open.setStyle(
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: " + accent + ";" +
-                "-fx-font-size: 12px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-padding: 8 0 0 0;" +
-                "-fx-cursor: hand;"
-        );
-        open.setOnAction(e -> action.run());
-
-        VBox card = new VBox(8, t, d, s, open);
-        card.setPrefWidth(240);
-        card.setPrefHeight(140);
-        card.setPadding(new Insets(18));
-        card.setStyle(
-                "-fx-background-color: " + PANEL + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 8px;" +
-                "-fx-background-radius: 8px;"
-        );
-
-        // Hover effect
-        card.setOnMouseEntered(e -> card.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-border-color: " + BORDER_SOFT + ";" +
-                "-fx-border-radius: 8px;" +
-                "-fx-background-radius: 8px;" +
-                "-fx-cursor: hand;"
-        ));
-        card.setOnMouseExited(e -> card.setStyle(
-                "-fx-background-color: " + PANEL + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 8px;" +
-                "-fx-background-radius: 8px;"
-        ));
-        card.setOnMouseClicked(e -> action.run());
-
-        return card;
-    }
-
-    private VBox createStatCard(String title, Label value, String accent) {
-        Label t = new Label(title.toUpperCase());
-        t.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px; -fx-font-weight: bold;");
-
-        value.setStyle("-fx-text-fill: " + accent + "; -fx-font-size: 22px; -fx-font-weight: bold;");
-
-        VBox card = new VBox(4, t, value);
-        card.setPadding(new Insets(12, 16, 12, 16));
-        card.setPrefWidth(140);
-        card.setStyle(
-                "-fx-background-color: " + PANEL + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 7px;" +
-                "-fx-background-radius: 7px;"
-        );
-        return card;
-    }
-
-    private VBox createResultRow(String platform, String result) {
-        Label platformLabel = new Label(platform);
-        platformLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
-
-        Label statusLabel = new Label();
-        String url = null;
-
-        if (result.startsWith("FOUND |")) {
-            statusLabel.setText("Found");
-            statusLabel.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px; -fx-font-weight: bold;");
-            url = result.substring("FOUND |".length()).trim();
-        } else if (result.startsWith("NOT FOUND")) {
-            statusLabel.setText("Not found");
-            statusLabel.setStyle("-fx-text-fill: " + RED + "; -fx-font-size: 12px;");
-        } else {
-            statusLabel.setText("Unknown");
-            statusLabel.setStyle("-fx-text-fill: " + YELLOW + "; -fx-font-size: 12px;");
+        if (statusBarLabel == null) {
+            return;
         }
 
-        VBox left = new VBox(3, platformLabel, statusLabel);
+        statusBarLabel.setText(
+                text
+        );
 
-        HBox row = new HBox(16);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(13, 16, 13, 16));
+        statusBarLabel.setStyle(
+                "-fx-text-fill: " +
+                color +
+                "; -fx-font-size: 11px;"
+        );
+    }
+
+
+    // =========================================================
+    // RESULT ROW
+    // Creates a visual row for scanner results
+    // =========================================================
+
+    private VBox createResultRow(
+            String platform,
+            String result
+    ) {
+
+        if (result == null) {
+            result = "UNKNOWN";
+        }
+
+        Label platformLabel =
+                new Label(platform);
+
+        platformLabel.setStyle(
+                "-fx-text-fill: " + TEXT +
+                "; -fx-font-size: 13px;" +
+                " -fx-font-weight: bold;"
+        );
+
+
+        Label statusLabel =
+                new Label();
+
+        String url = null;
+
+
+        if (
+                result.startsWith("FOUND |")
+        ) {
+
+            statusLabel.setText(
+                    "Found"
+            );
+
+            statusLabel.setStyle(
+                    "-fx-text-fill: " +
+                    GREEN +
+                    "; -fx-font-size: 12px;" +
+                    " -fx-font-weight: bold;"
+            );
+
+            url =
+                    result
+                            .substring(
+                                    "FOUND |".length()
+                            )
+                            .trim();
+
+        } else if (
+                result.startsWith("NOT FOUND")
+        ) {
+
+            statusLabel.setText(
+                    "Not found"
+            );
+
+            statusLabel.setStyle(
+                    "-fx-text-fill: " +
+                    RED +
+                    "; -fx-font-size: 12px;"
+            );
+
+        } else {
+
+            statusLabel.setText(
+                    "Unknown"
+            );
+
+            statusLabel.setStyle(
+                    "-fx-text-fill: " +
+                    YELLOW +
+                    "; -fx-font-size: 12px;"
+            );
+        }
+
+
+        VBox left =
+                new VBox(
+                        3,
+                        platformLabel,
+                        statusLabel
+                );
+
+
+        HBox row =
+                new HBox(16);
+
+        row.setAlignment(
+                Pos.CENTER_LEFT
+        );
+
+        row.setPadding(
+                new Insets(
+                        13,
+                        16,
+                        13,
+                        16
+                )
+        );
+
         row.setStyle(
                 "-fx-background-color: " + SURFACE + ";" +
                 "-fx-border-color: " + BORDER + ";" +
                 "-fx-border-radius: 7px;" +
                 "-fx-background-radius: 7px;"
         );
-        row.getChildren().add(left);
 
-        if (url != null && !url.isBlank()) {
-            final String targetUrl = url;
-            Hyperlink link = new Hyperlink(targetUrl);
-            link.setStyle("-fx-text-fill: " + BLUE + "; -fx-font-size: 12px;");
-            link.setOnAction(e -> openUrl(targetUrl));
-            row.getChildren().add(link);
-            HBox.setHgrow(link, Priority.ALWAYS);
-        } else if (!result.startsWith("FOUND") && !result.startsWith("NOT FOUND")) {
-            Label details = new Label(result.contains("|") ? result.split("\\|", 2)[1].trim() : result);
-            details.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
-            details.setWrapText(true);
-            row.getChildren().add(details);
+        row.getChildren()
+                .add(left);
+
+
+        if (
+                url != null &&
+                !url.isBlank()
+        ) {
+
+            final String targetUrl =
+                    url;
+
+            Hyperlink link =
+                    new Hyperlink(
+                            targetUrl
+                    );
+
+            link.setStyle(
+                    "-fx-text-fill: " +
+                    BLUE +
+                    "; -fx-font-size: 12px;"
+            );
+
+            link.setOnAction(
+                    e -> openUrl(targetUrl)
+            );
+
+            row.getChildren()
+                    .add(link);
+
+            HBox.setHgrow(
+                    link,
+                    Priority.ALWAYS
+            );
+
+        } else if (
+                !result.startsWith("FOUND") &&
+                !result.startsWith("NOT FOUND")
+        ) {
+
+            String details =
+                    result.contains("|")
+                            ? result.split(
+                                    "\\|",
+                                    2
+                            )[1].trim()
+                            : result;
+
+            Label detailsLabel =
+                    new Label(details);
+
+            detailsLabel.setStyle(
+                    "-fx-text-fill: " +
+                    MUTED +
+                    "; -fx-font-size: 12px;"
+            );
+
+            detailsLabel.setWrapText(
+                    true
+            );
+
+            row.getChildren()
+                    .add(detailsLabel);
         }
 
-        // Hover
-        row.setOnMouseEntered(e -> row.setStyle(
-                "-fx-background-color: " + SURFACE_2 + ";" +
-                "-fx-border-color: " + BORDER_SOFT + ";" +
-                "-fx-border-radius: 7px;" +
-                "-fx-background-radius: 7px;"
-        ));
-        row.setOnMouseExited(e -> row.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 7px;" +
-                "-fx-background-radius: 7px;"
-        ));
+
+        // =====================================================
+        // HOVER EFFECT
+        // =====================================================
+
+        row.setOnMouseEntered(
+                e -> row.setStyle(
+                        "-fx-background-color: " +
+                        SURFACE_2 +
+                        ";" +
+                        "-fx-border-color: " +
+                        BORDER_SOFT +
+                        ";" +
+                        "-fx-border-radius: 7px;" +
+                        "-fx-background-radius: 7px;"
+                )
+        );
+
+        row.setOnMouseExited(
+                e -> row.setStyle(
+                        "-fx-background-color: " +
+                        SURFACE +
+                        ";" +
+                        "-fx-border-color: " +
+                        BORDER +
+                        ";" +
+                        "-fx-border-radius: 7px;" +
+                        "-fx-background-radius: 7px;"
+                )
+        );
+
 
         return new VBox(row);
     }
 
-    private Label createEmptyState(String text) {
-        Label l = new Label(text);
-        l.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
-        l.setPadding(new Insets(28, 0, 20, 0));
-        return l;
-    }
-
-    private Button createGhostButton(String text) {
-        Button b = new Button(text);
-        b.setStyle(
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 6px;" +
-                "-fx-background-radius: 6px;" +
-                "-fx-font-size: 12px;" +
-                "-fx-padding: 6 14;" +
-                "-fx-cursor: hand;"
-        );
-        b.setOnMouseEntered(e -> b.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-border-color: " + BORDER_SOFT + ";" +
-                "-fx-border-radius: 6px;" +
-                "-fx-background-radius: 6px;" +
-                "-fx-font-size: 12px;" +
-                "-fx-padding: 6 14;" +
-                "-fx-cursor: hand;"
-        ));
-        b.setOnMouseExited(e -> b.setStyle(
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 6px;" +
-                "-fx-background-radius: 6px;" +
-                "-fx-font-size: 12px;" +
-                "-fx-padding: 6 14;" +
-                "-fx-cursor: hand;"
-        ));
-        return b;
-    }
-
-    private void openUrl(String url) {
-        try {
-            if (Desktop.isDesktopSupported()) {
-                Desktop.getDesktop().browse(new URI(url));
-            }
-        } catch (Exception ex) {
-            setStatus("Could not open link", RED);
-        }
-    }
 
     // =========================================================
-    // DATA
+    // SECTION HEADER
     // =========================================================
 
-    private static class ScanRecord {
-        final String type;
-        final String target;
-        final int found;
-        final String time;
+    private Label createSectionHeader(
+            String title
+    ) {
 
-        ScanRecord(String type, String target, int found, String time) {
-            this.type = type;
-            this.target = target;
-            this.found = found;
-            this.time = time;
-        }
-    }
+        Label header =
+                new Label(title);
 
-    public static void main(String[] args) {
-        launch(args);
-    }
-    private void openImageMetadata() {
-
-    FileChooser fileChooser = new FileChooser();
-    fileChooser.setTitle("Select Image");
-
-    fileChooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter(
-                    "Image Files",
-                    "*.jpg",
-                    "*.jpeg",
-                    "*.png",
-                    "*.gif",
-                    "*.tif",
-                    "*.tiff",
-                    "*.webp"
-            )
-    );
-
-    File selectedFile = fileChooser.showOpenDialog(null);
-
-    if (selectedFile == null) {
-        return;
-    }
-
-    ImageMetadataScanner scanner =
-            new ImageMetadataScanner();
-
-    ImageMetadataScanner.Result result =
-            scanner.scan(selectedFile);
-
-    showImageMetadataResults(selectedFile, result);
-}
-private void showImageMetadataResults(
-        File imageFile,
-        ImageMetadataScanner.Result result) {
-
-    VBox content = new VBox(12);
-    content.setPadding(new Insets(20));
-    content.setStyle("-fx-background-color: #0f172a;");
-
-    Label title = new Label("IMAGE METADATA");
-    title.setStyle(
-            "-fx-text-fill: white;" +
-            "-fx-font-size: 22px;" +
-            "-fx-font-weight: bold;"
-    );
-
-    Label fileLabel = new Label(
-            "File: " + imageFile.getName()
-    );
-    fileLabel.setStyle(
-            "-fx-text-fill: #94a3b8;" +
-            "-fx-font-size: 13px;"
-    );
-
-    content.getChildren().addAll(title, fileLabel);
-
-    VBox metadataBox = new VBox(8);
-    metadataBox.setPadding(new Insets(15));
-    metadataBox.setStyle(
-            "-fx-background-color: #111827;" +
-            "-fx-background-radius: 8;"
-    );
-
-    for (Map.Entry<String, String> entry :
-            result.metadata.entrySet()) {
-
-        HBox row = new HBox(15);
-
-        Label key = new Label(entry.getKey());
-        key.setMinWidth(160);
-        key.setStyle(
-                "-fx-text-fill: #94a3b8;" +
-                "-fx-font-weight: bold;"
+        header.setStyle(
+                "-fx-text-fill: " + TEXT +
+                ";" +
+                "-fx-font-size: 13px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-padding: 16 0 6 2;"
         );
 
-        Label value = new Label(
-                entry.getValue() == null
-                        ? "Not available"
-                        : entry.getValue()
-        );
-
-        value.setWrapText(true);
-        value.setStyle(
-                "-fx-text-fill: white;"
-        );
-
-        row.getChildren().addAll(key, value);
-        metadataBox.getChildren().add(row);
+        return header;
     }
 
-    content.getChildren().add(metadataBox);
 
-    if (result.hasGps) {
+    // =========================================================
+    // EMPTY STATE
+    // =========================================================
 
-        Label gpsTitle = new Label("GPS INFORMATION");
-        gpsTitle.setStyle(
-                "-fx-text-fill: white;" +
-                "-fx-font-size: 16px;" +
-                "-fx-font-weight: bold;"
+    private Label createEmptyState(
+            String text
+    ) {
+
+        Label label =
+                new Label(text);
+
+        label.setStyle(
+                "-fx-text-fill: " +
+                MUTED +
+                "; -fx-font-size: 13px;"
         );
 
-        Label coordinates = new Label(
-                String.format(
-                        "Coordinates: %.6f, %.6f",
-                        result.latitude,
-                        result.longitude
+        label.setPadding(
+                new Insets(
+                        28,
+                        0,
+                        20,
+                        0
                 )
         );
 
-        coordinates.setStyle(
-                "-fx-text-fill: #60a5fa;" +
-                "-fx-font-size: 14px;"
-        );
-
-        Button mapButton =
-                new Button("Open Coordinates in Map");
-
-        mapButton.setOnAction(e -> {
-
-            String mapUrl = String.format(
-                    Locale.US,
-                    "https://www.google.com/maps?q=%.6f,%.6f",
-                    result.latitude,
-                    result.longitude
-            );
-
-            openUrl(mapUrl);
-        });
-
-        content.getChildren().addAll(
-                gpsTitle,
-                coordinates,
-                mapButton
-        );
+        return label;
     }
 
-    ScrollPane scrollPane =
-            new ScrollPane(content);
 
-    scrollPane.setFitToWidth(true);
-    scrollPane.setFitToHeight(true);
+    // =========================================================
+    // STAT CARD
+    // =========================================================
 
-    Stage metadataStage = new Stage();
-    metadataStage.setTitle(
-            "OMEN-X — Image Metadata"
-    );
+    private VBox createStatCard(
+            String title,
+            Label value,
+            String accent
+    ) {
 
-    Scene scene =
-            new Scene(scrollPane, 900, 700);
+        Label t =
+                new Label(
+                        title.toUpperCase()
+                );
 
-    metadataStage.setScene(scene);
-    metadataStage.show();
-}
+        t.setStyle(
+                "-fx-text-fill: " +
+                MUTED +
+                "; -fx-font-size: 10px;" +
+                " -fx-font-weight: bold;"
+        );
+
+        value.setStyle(
+                "-fx-text-fill: " +
+                accent +
+                "; -fx-font-size: 22px;" +
+                " -fx-font-weight: bold;"
+        );
+
+        VBox card =
+                new VBox(
+                        4,
+                        t,
+                        value
+                );
+
+        card.setPadding(
+                new Insets(
+                        12,
+                        16,
+                        12,
+                        16
+                )
+        );
+
+        card.setPrefWidth(
+                140
+        );
+
+        card.setStyle(
+                "-fx-background-color: " +
+                PANEL +
+                ";" +
+                "-fx-border-color: " +
+                BORDER +
+                ";" +
+                "-fx-border-radius: 7px;" +
+                "-fx-background-radius: 7px;"
+        );
+
+        return card;
+    }
+
+
+    // =========================================================
+    // GHOST BUTTON
+    // =========================================================
+
+    private Button createGhostButton(
+            String text
+    ) {
+
+        Button button =
+                new Button(text);
+
+        button.setStyle(
+                "-fx-background-color: transparent;" +
+                "-fx-text-fill: " + MUTED + ";" +
+                "-fx-border-color: " + BORDER + ";" +
+                "-fx-border-radius: 6px;" +
+                "-fx-background-radius: 6px;" +
+                "-fx-font-size: 12px;" +
+                "-fx-padding: 6 14;" +
+                "-fx-cursor: hand;"
+        );
+
+        button.setOnMouseEntered(
+                e -> button.setStyle(
+                        "-fx-background-color: " +
+                        SURFACE +
+                        ";" +
+                        "-fx-text-fill: " +
+                        TEXT +
+                        ";" +
+                        "-fx-border-color: " +
+                        BORDER_SOFT +
+                        ";" +
+                        "-fx-border-radius: 6px;" +
+                        "-fx-background-radius: 6px;" +
+                        "-fx-font-size: 12px;" +
+                        "-fx-padding: 6 14;" +
+                        "-fx-cursor: hand;"
+                )
+        );
+
+        button.setOnMouseExited(
+                e -> button.setStyle(
+                        "-fx-background-color: transparent;" +
+                        "-fx-text-fill: " +
+                        MUTED +
+                        ";" +
+                        "-fx-border-color: " +
+                        BORDER +
+                        ";" +
+                        "-fx-border-radius: 6px;" +
+                        "-fx-background-radius: 6px;" +
+                        "-fx-font-size: 12px;" +
+                        "-fx-padding: 6 14;" +
+                        "-fx-cursor: hand;"
+                )
+        );
+
+        return button;
+    }
+
+
+    // =========================================================
+    // OPEN URL
+    // =========================================================
+
+    private void openUrl(
+            String url
+    ) {
+
+        try {
+
+            if (
+                    Desktop.isDesktopSupported()
+            ) {
+
+                Desktop
+                        .getDesktop()
+                        .browse(
+                                new URI(url)
+                        );
+            }
+
+        } catch (Exception ex) {
+
+            setStatus(
+                    "Could not open link",
+                    RED
+            );
+        }
+    }
+
+
+    // =========================================================
+    // APPLICATION ENTRY POINT
+    // =========================================================
+
+    public static void main(
+            String[] args
+    ) {
+
+        launch(args);
+    }
 }
