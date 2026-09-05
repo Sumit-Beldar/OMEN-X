@@ -3,6 +3,7 @@ package com.omenx;
 import com.omenx.osint.UsernameScanner;
 import com.omenx.osint.DomainScanner;
 import com.omenx.osint.EmailScanner;
+import com.omenx.osint.ImageMetadataScanner;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -15,9 +16,11 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.awt.Desktop;
+import java.io.File;
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -120,7 +123,7 @@ public class Main extends Application {
         // Overview metrics
         totalScansLabel = new Label("0");
         findingsLabel = new Label("0");
-        Label modulesLabel = new Label("5");
+        Label modulesLabel = new Label("6");
         Label statusLabel = new Label("Online");
 
         HBox metrics = new HBox(12,
@@ -146,6 +149,7 @@ public class Main extends Application {
         moduleGrid.add(createModuleCard("Domain", "WHOIS, DNS & infrastructure", PURPLE, "Ready", () -> openModule("Domain")), 2, 0);
         moduleGrid.add(createModuleCard("IP Address", "Geolocation & reputation", YELLOW, "Ready", () -> openModule("IP Address")), 0, 1);
         moduleGrid.add(createModuleCard("Phone", "Carrier & public records", CYAN, "Ready", () -> openModule("Phone")), 1, 1);
+        moduleGrid.add(createModuleCard("Image Metadata", "EXIF data & GPS location", "#FF8A65", "Ready", this::openImageMetadata), 2, 1);
 
         VBox modulesSection = new VBox(10, modulesTitle, modulesSub, moduleGrid);
 
@@ -228,6 +232,140 @@ public class Main extends Application {
                 "-fx-background-radius: 6px;"
         );
         return row;
+    }
+
+    // =========================================================
+    // IMAGE METADATA
+    // =========================================================
+
+    private void openImageMetadataView() {
+        root.setCenter(createImageMetadataView());
+    }
+
+    private VBox createImageMetadataView() {
+        // Kept as a separate builder so the dashboard action stays small.
+        Label title = new Label("Image Metadata Scanner");
+        title.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 20px; -fx-font-weight: bold;");
+
+        Button backBtn = createGhostButton("←  Dashboard");
+        backBtn.setOnAction(e -> root.setCenter(dashboardView));
+
+        HBox header = new HBox(16, title, backBtn);
+        header.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(title, Priority.ALWAYS);
+
+        Button selectButton = new Button("Select Image…");
+        selectButton.setPrefHeight(40);
+        selectButton.setStyle("-fx-background-color: " + GREEN + "; -fx-text-fill: #0A0E12; -fx-font-weight: bold; -fx-background-radius: 6px; -fx-cursor: hand;");
+
+        Label fileLabel = new Label("No image selected");
+        fileLabel.setStyle("-fx-text-fill: " + MUTED + ";");
+
+        VBox results = new VBox(8, createEmptyState("Select an image to begin metadata analysis."));
+        ScrollPane scroll = new ScrollPane(results);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        selectButton.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Select Image");
+            chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                    "Image Files", "*.jpg", "*.jpeg", "*.png", "*.tif", "*.tiff", "*.webp", "*.gif"));
+            File file = chooser.showOpenDialog(root.getScene().getWindow());
+            if (file == null) return;
+            fileLabel.setText(file.getName());
+            selectButton.setDisable(true);
+            results.getChildren().setAll(createEmptyState("Reading EXIF and image metadata…"));
+            executor.submit(() -> {
+                ImageMetadataScanner.Result result = new ImageMetadataScanner().scan(file);
+                Platform.runLater(() -> {
+                    renderImageMetadata(results, result);
+                    selectButton.setDisable(false);
+                });
+            });
+        });
+
+        VBox content = new VBox(18, header, new HBox(12, selectButton, fileLabel), scroll);
+        content.setPadding(new Insets(28, 32, 24, 32));
+        content.setStyle("-fx-background-color: " + BG + ";");
+        return content;
+    }
+
+    private void renderImageMetadata(VBox results, ImageMetadataScanner.Result result) {
+        results.getChildren().clear();
+
+        if (result.metadata.isEmpty()) {
+            results.getChildren().add(createEmptyState("No metadata was found."));
+            return;
+        }
+
+        results.getChildren().add(createSectionHeader("FILE INFORMATION"));
+        addMetadataRow(results, "File Name", result.metadata.get("File Name"));
+        addMetadataRow(results, "Source", result.metadata.get("Source"));
+        addMetadataRow(results, "Extension", result.metadata.get("Extension"));
+        addMetadataRow(results, "Size", result.metadata.get("Size"));
+        addMetadataRow(results, "Detected MIME", result.metadata.get("Detected MIME"));
+        addMetadataRow(results, "Signature", result.metadata.get("Signature"));
+        addMetadataRow(results, "Width", result.metadata.get("Width"));
+        addMetadataRow(results, "Height", result.metadata.get("Height"));
+
+        results.getChildren().add(createSectionHeader("CAMERA INFORMATION"));
+        addMetadataRow(results, "Camera Make", result.metadata.get("Camera Make"));
+        addMetadataRow(results, "Camera Model", result.metadata.get("Camera Model"));
+        addMetadataRow(results, "Software", result.metadata.get("Software"));
+        addMetadataRow(results, "Exposure", result.metadata.get("Exposure"));
+        addMetadataRow(results, "F-Number", result.metadata.get("F-Number"));
+        addMetadataRow(results, "ISO", result.metadata.get("ISO"));
+
+        results.getChildren().add(createSectionHeader("DATE & TIME"));
+        addMetadataRow(results, "Date Taken", result.metadata.get("Date Taken"));
+        addMetadataRow(results, "Original Date", result.metadata.get("Original Date"));
+
+        results.getChildren().add(createSectionHeader("GPS INFORMATION"));
+        addMetadataRow(results, "GPS Status", result.hasGps ? "GPS coordinates detected" : "GPS not available");
+        addMetadataRow(results, "Latitude", result.metadata.get("GPS Latitude"));
+        addMetadataRow(results, "Longitude", result.metadata.get("GPS Longitude"));
+
+        if (result.hasGps && result.latitude != null && result.longitude != null) {
+            String coordinates = String.format(Locale.US, "%.6f, %.6f", result.latitude, result.longitude);
+            addMetadataRow(results, "Coordinates", coordinates);
+
+            Button mapButton = new Button("Open Coordinates in Map  →");
+            mapButton.setStyle("-fx-background-color: transparent; -fx-text-fill: " + BLUE + "; -fx-font-size: 12px; -fx-font-weight: bold; -fx-cursor: hand;");
+            mapButton.setOnAction(e -> openUrl("https://www.google.com/maps?q=" + result.latitude + "," + result.longitude));
+            results.getChildren().add(mapButton);
+        }
+
+        if (result.metadata.containsKey("Error")) {
+            results.getChildren().add(createSectionHeader("STATUS"));
+            addMetadataRow(results, "Error", result.metadata.get("Error"));
+        }
+    }
+
+    private void addMetadataRow(VBox results, String label, String value) {
+        String display = (value == null || value.isBlank()) ? "—" : value;
+        Label key = new Label(label);
+        key.setMinWidth(150);
+        key.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+
+        Label val = new Label(display);
+        val.setWrapText(true);
+        val.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
+        HBox.setHgrow(val, Priority.ALWAYS);
+
+        HBox row = new HBox(16, key, val);
+        row.setAlignment(Pos.TOP_LEFT);
+        row.setPadding(new Insets(9, 14, 9, 14));
+        row.setStyle("-fx-background-color: " + SURFACE + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 6px; -fx-background-radius: 6px;");
+        results.getChildren().add(row);
+    }
+
+    private String formatFileSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format(Locale.US, "%.2f KB", bytes / 1024.0);
+        return String.format(Locale.US, "%.2f MB", bytes / (1024.0 * 1024.0));
     }
 
     // =========================================================
@@ -877,4 +1015,158 @@ public class Main extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+    private void openImageMetadata() {
+
+    FileChooser fileChooser = new FileChooser();
+    fileChooser.setTitle("Select Image");
+
+    fileChooser.getExtensionFilters().add(
+            new FileChooser.ExtensionFilter(
+                    "Image Files",
+                    "*.jpg",
+                    "*.jpeg",
+                    "*.png",
+                    "*.gif",
+                    "*.tif",
+                    "*.tiff",
+                    "*.webp"
+            )
+    );
+
+    File selectedFile = fileChooser.showOpenDialog(null);
+
+    if (selectedFile == null) {
+        return;
+    }
+
+    ImageMetadataScanner scanner =
+            new ImageMetadataScanner();
+
+    ImageMetadataScanner.Result result =
+            scanner.scan(selectedFile);
+
+    showImageMetadataResults(selectedFile, result);
+}
+private void showImageMetadataResults(
+        File imageFile,
+        ImageMetadataScanner.Result result) {
+
+    VBox content = new VBox(12);
+    content.setPadding(new Insets(20));
+    content.setStyle("-fx-background-color: #0f172a;");
+
+    Label title = new Label("IMAGE METADATA");
+    title.setStyle(
+            "-fx-text-fill: white;" +
+            "-fx-font-size: 22px;" +
+            "-fx-font-weight: bold;"
+    );
+
+    Label fileLabel = new Label(
+            "File: " + imageFile.getName()
+    );
+    fileLabel.setStyle(
+            "-fx-text-fill: #94a3b8;" +
+            "-fx-font-size: 13px;"
+    );
+
+    content.getChildren().addAll(title, fileLabel);
+
+    VBox metadataBox = new VBox(8);
+    metadataBox.setPadding(new Insets(15));
+    metadataBox.setStyle(
+            "-fx-background-color: #111827;" +
+            "-fx-background-radius: 8;"
+    );
+
+    for (Map.Entry<String, String> entry :
+            result.metadata.entrySet()) {
+
+        HBox row = new HBox(15);
+
+        Label key = new Label(entry.getKey());
+        key.setMinWidth(160);
+        key.setStyle(
+                "-fx-text-fill: #94a3b8;" +
+                "-fx-font-weight: bold;"
+        );
+
+        Label value = new Label(
+                entry.getValue() == null
+                        ? "Not available"
+                        : entry.getValue()
+        );
+
+        value.setWrapText(true);
+        value.setStyle(
+                "-fx-text-fill: white;"
+        );
+
+        row.getChildren().addAll(key, value);
+        metadataBox.getChildren().add(row);
+    }
+
+    content.getChildren().add(metadataBox);
+
+    if (result.hasGps) {
+
+        Label gpsTitle = new Label("GPS INFORMATION");
+        gpsTitle.setStyle(
+                "-fx-text-fill: white;" +
+                "-fx-font-size: 16px;" +
+                "-fx-font-weight: bold;"
+        );
+
+        Label coordinates = new Label(
+                String.format(
+                        "Coordinates: %.6f, %.6f",
+                        result.latitude,
+                        result.longitude
+                )
+        );
+
+        coordinates.setStyle(
+                "-fx-text-fill: #60a5fa;" +
+                "-fx-font-size: 14px;"
+        );
+
+        Button mapButton =
+                new Button("Open Coordinates in Map");
+
+        mapButton.setOnAction(e -> {
+
+            String mapUrl = String.format(
+                    Locale.US,
+                    "https://www.google.com/maps?q=%.6f,%.6f",
+                    result.latitude,
+                    result.longitude
+            );
+
+            openUrl(mapUrl);
+        });
+
+        content.getChildren().addAll(
+                gpsTitle,
+                coordinates,
+                mapButton
+        );
+    }
+
+    ScrollPane scrollPane =
+            new ScrollPane(content);
+
+    scrollPane.setFitToWidth(true);
+    scrollPane.setFitToHeight(true);
+
+    Stage metadataStage = new Stage();
+    metadataStage.setTitle(
+            "OMEN-X — Image Metadata"
+    );
+
+    Scene scene =
+            new Scene(scrollPane, 900, 700);
+
+    metadataStage.setScene(scene);
+    metadataStage.show();
+}
 }

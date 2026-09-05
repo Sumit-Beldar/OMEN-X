@@ -130,29 +130,70 @@ public class DomainScanner {
     }
 
     private Map<String, String> checkSsl(String domain) {
-        Map<String, String> map = new LinkedHashMap<>();
-        try {
-            HttpsURLConnection conn = (HttpsURLConnection) new URL("https://" + domain).openConnection();
-            conn.setConnectTimeout(4000);
-            conn.connect();
+    Map<String, String> map = new LinkedHashMap<>();
 
-            var session = conn.getSSLSession();
-            if (session.isPresent() && session.get().getPeerCertificates().length > 0) {
-                X509Certificate cert = (X509Certificate) session.get().getPeerCertificates()[0];
+    try {
+        URL url = new URL("https://" + domain);
 
-                map.put("ssl_subject", cert.getSubjectX500Principal().getName());
-                map.put("ssl_issuer", cert.getIssuerX500Principal().getName());
+        HttpsURLConnection conn =
+                (HttpsURLConnection) url.openConnection();
 
-                DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-                        .withZone(ZoneId.systemDefault());
-                String from = fmt.format(cert.getNotBefore().toInstant());
-                String to = fmt.format(cert.getNotAfter().toInstant());
-                map.put("ssl_validity", from + " → " + to);
-            }
-            conn.disconnect();
-        } catch (Exception ignored) {}
-        return map;
+        conn.setConnectTimeout(5000);
+        conn.setReadTimeout(5000);
+        conn.setRequestMethod("GET");
+        conn.connect();
+
+        java.security.cert.Certificate[] certificates =
+                conn.getServerCertificates();
+
+        if (certificates != null && certificates.length > 0) {
+
+            X509Certificate cert =
+                    (X509Certificate) certificates[0];
+
+            map.put(
+                    "ssl_subject",
+                    cert.getSubjectX500Principal().getName()
+            );
+
+            map.put(
+                    "ssl_issuer",
+                    cert.getIssuerX500Principal().getName()
+            );
+
+            DateTimeFormatter fmt =
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                            .withZone(ZoneId.systemDefault());
+
+            String from =
+                    fmt.format(cert.getNotBefore().toInstant());
+
+            String to =
+                    fmt.format(cert.getNotAfter().toInstant());
+
+            map.put(
+                    "ssl_validity",
+                    from + " → " + to
+            );
+
+            map.put(
+                    "ssl_status",
+                    "Valid certificate detected"
+            );
+        }
+
+        conn.disconnect();
+
+    } catch (Exception e) {
+
+        map.put(
+                "ssl_status",
+                "Unable to retrieve SSL certificate"
+        );
     }
+
+    return map;
+}
 
     private String checkSubdomains(String domain) {
         List<String> found = new ArrayList<>();
