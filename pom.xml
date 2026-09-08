@@ -19,30 +19,85 @@
 
     <dependencies>
 
-        <!-- JavaFX Controls -->
+        <!-- ===================================================== -->
+        <!-- JavaFX -->
+        <!-- ===================================================== -->
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- JavaFX FXML -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
-        </dependency> 
+        </dependency>
 
-        <!-- Image metadata extraction -->
+
+        <!-- ===================================================== -->
+        <!-- Image metadata -->
+        <!-- ===================================================== -->
+
         <dependency>
-         <groupId>com.drewnoakes</groupId>
-         <artifactId>metadata-extractor</artifactId>
-         <version>2.19.0</version>
+            <groupId>com.drewnoakes</groupId>
+            <artifactId>metadata-extractor</artifactId>
+            <version>2.19.0</version>
+        </dependency>
+
+
+        <!-- ===================================================== -->
+        <!-- Jackson JSON -->
+        <!-- ===================================================== -->
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+
+
+        <!-- ===================================================== -->
+        <!-- Google libphonenumber -->
+        <!-- ===================================================== -->
+
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>libphonenumber</artifactId>
+            <version>9.0.38</version>
+        </dependency>
+
+        <!-- Phone number carrier metadata -->
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>carrier</artifactId>
+            <version>2.38</version>
+        </dependency>
+
+        <!-- Phone number geographic/timezone metadata -->
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>geocoder</artifactId>
+            <version>3.37</version>
+        </dependency>
+
+        <!-- Prefix mapping used by the metadata modules -->
+        <dependency>
+            <groupId>com.googlecode.libphonenumber</groupId>
+            <artifactId>prefixmapper</artifactId>
+            <version>3.37</version>
         </dependency>
 
     </dependencies>
 
+
+    <!-- ========================================================= -->
+    <!-- BUILD -->
+    <!-- ========================================================= -->
+
     <build>
+
         <plugins>
 
             <!-- JavaFX Maven Plugin -->
@@ -54,9 +109,11 @@
                 <configuration>
                     <mainClass>com.omenx.Main</mainClass>
                 </configuration>
+
             </plugin>
 
         </plugins>
+
     </build>
 
 </project>

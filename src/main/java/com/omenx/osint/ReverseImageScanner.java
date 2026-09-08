@@ -1,398 +1,538 @@
-package com.omenx.osint;
+package com.omenx;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.security.MessageDigest;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
 
-import com.drew.imaging.ImageMetadataReader;
-import com.drew.metadata.Metadata;
-import com.drew.metadata.exif.GpsDirectory;
+// =========================================================
+// REVERSE IMAGE SCANNER
+//
+// Flow:
+//
+// Local Image
+//      ↓
+// imgdb.io temporary upload
+//      ↓
+// Public image URL
+//      ↓
+// QuanticData Google Lens API
+//      ↓
+// Real Internet results
+// =========================================================
 
-/**
- * ReverseImageScanner
- *
- * Day 3 foundation for OMEN-X's Reverse Image OSINT module.
- *
- * Current responsibilities:
- *  - Validate the supplied image
- *  - Read basic file information
- *  - Calculate SHA-256 hash
- *  - Read EXIF/GPS information
- *  - Prepare a structured Result object for the future
- *    reverse-image/web-search layer
- *
- * IMPORTANT:
- * This class does NOT pretend to perform a reverse-image
- * search yet. The actual internet search provider will be
- * added separately.
- */
 public class ReverseImageScanner {
+
+    private static final String UPLOAD_URL =
+            "https://imgdb.io/api/v1/upload?ttl=3600";
+
+    private static final String QUANTICDATA_URL =
+            "https://api.quanticdata.io/v1/scraper/collectors/google_lens/run";
+
+    private final HttpClient httpClient;
+
+    private final ObjectMapper objectMapper;
+
+    private String apiKey;
+
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
+
+    public ReverseImageScanner() {
+
+        httpClient =
+                HttpClient.newBuilder()
+                        .followRedirects(
+                                HttpClient.Redirect.NORMAL
+                        )
+                        .build();
+
+        objectMapper =
+                new ObjectMapper();
+
+        loadApiKey();
+    }
+
+    // =========================================================
+    // LOAD API KEY
+    // =========================================================
+
+    private void loadApiKey() {
+
+        try {
+
+            Properties properties =
+                    new Properties();
+
+            var stream =
+                    getClass()
+                            .getClassLoader()
+                            .getResourceAsStream(
+                                    "config.properties"
+                            );
+
+            if (stream == null) {
+
+                throw new IOException(
+                        "config.properties not found"
+                );
+            }
+
+            properties.load(stream);
+
+            apiKey =
+                    properties.getProperty(
+                            "QUANTICDATA_API_KEY"
+                    );
+
+            if (apiKey == null ||
+                    apiKey.isBlank()) {
+
+                throw new IOException(
+                        "QUANTICDATA_API_KEY is missing"
+                );
+            }
+
+        } catch (Exception e) {
+
+            apiKey = null;
+
+            System.err.println(
+                    "Unable to load QuanticData API key: "
+                            + e.getMessage()
+            );
+        }
+    }
 
     // =========================================================
     // RESULT
     // =========================================================
 
-    public static class Result {
+    public static class Match {
 
-        private final Map<String, String> information =
-                new LinkedHashMap<>();
+        private final String title;
+        private final String source;
+        private final String domain;
+        private final String link;
+        private final String image;
+        private final String thumbnail;
 
-        private boolean validImage = false;
-        private boolean hasGps = false;
+        public Match(
+                String title,
+                String source,
+                String domain,
+                String link,
+                String image,
+                String thumbnail
+        ) {
 
-        private Double latitude = null;
-        private Double longitude = null;
-
-        public Map<String, String> getInformation() {
-            return information;
+            this.title = title;
+            this.source = source;
+            this.domain = domain;
+            this.link = link;
+            this.image = image;
+            this.thumbnail = thumbnail;
         }
 
-        public boolean isValidImage() {
-            return validImage;
+        public String getTitle() {
+            return title;
         }
 
-        public boolean hasGps() {
-            return hasGps;
+        public String getSource() {
+            return source;
         }
 
-        public Double getLatitude() {
-            return latitude;
+        public String getDomain() {
+            return domain;
         }
 
-        public Double getLongitude() {
-            return longitude;
+        public String getLink() {
+            return link;
+        }
+
+        public String getImage() {
+            return image;
+        }
+
+        public String getThumbnail() {
+            return thumbnail;
         }
     }
 
     // =========================================================
-    // MAIN SCAN METHOD
+    // SCAN
     // =========================================================
 
-    public Result scan(File imageFile) {
+    public List<Match> scan(File imageFile)
+            throws Exception {
 
-        Result result = new Result();
+        if (imageFile == null ||
+                !imageFile.exists() ||
+                !imageFile.isFile()) {
 
-        // -----------------------------------------------------
-        // Validate file
-        // -----------------------------------------------------
-
-        if (imageFile == null) {
-            result.information.put(
-                    "Status",
-                    "No image was selected."
+            throw new IOException(
+                    "Invalid image file."
             );
-
-            return result;
         }
 
-        if (!imageFile.exists()) {
-            result.information.put(
-                    "Status",
-                    "Selected file does not exist."
-            );
+        if (apiKey == null ||
+                apiKey.isBlank()) {
 
-            return result;
+            throw new IOException(
+                    "QuanticData API key is not configured."
+            );
         }
 
-        if (!imageFile.isFile()) {
-            result.information.put(
-                    "Status",
-                    "Selected path is not a file."
-            );
-
-            return result;
-        }
-
-        if (!isSupportedImage(imageFile)) {
-            result.information.put(
-                    "Status",
-                    "Unsupported image format."
-            );
-
-            return result;
-        }
-
-        result.validImage = true;
-
-        // -----------------------------------------------------
-        // Basic file information
-        // -----------------------------------------------------
-
-        result.information.put(
-                "Status",
-                "Image loaded successfully."
+        System.out.println(
+                "Uploading image..."
         );
 
-        result.information.put(
-                "File Name",
-                imageFile.getName()
+        String publicImageUrl =
+                uploadImage(imageFile);
+
+        System.out.println(
+                "Image URL: "
+                        + publicImageUrl
         );
 
-        result.information.put(
-                "File Path",
-                imageFile.getAbsolutePath()
+        System.out.println(
+                "Searching Internet..."
         );
 
-        result.information.put(
-                "File Size",
-                formatFileSize(imageFile.length())
-        );
-
-        result.information.put(
-                "Extension",
-                getExtension(imageFile)
-        );
-
-        // -----------------------------------------------------
-        // SHA-256
-        // -----------------------------------------------------
-
-        String hash = calculateSha256(imageFile);
-
-        if (hash != null) {
-
-            result.information.put(
-                    "SHA-256",
-                    hash
-            );
-
-        } else {
-
-            result.information.put(
-                    "SHA-256",
-                    "Unable to calculate hash"
-            );
-        }
-
-        // -----------------------------------------------------
-        // EXIF / GPS
-        // -----------------------------------------------------
-
-        readGpsMetadata(imageFile, result);
-
-        // -----------------------------------------------------
-        // Future reverse-image search status
-        // -----------------------------------------------------
-
-        result.information.put(
-                "Reverse Image Search",
-                "Not connected yet"
-        );
-
-        result.information.put(
-                "Location Analysis",
-                result.hasGps
-                        ? "GPS coordinates found"
-                        : "GPS coordinates not found"
-        );
-
-        return result;
-    }
-
-    // =========================================================
-    // SUPPORTED IMAGE CHECK
-    // =========================================================
-
-    private boolean isSupportedImage(File file) {
-
-        String extension = getExtension(file)
-                .toLowerCase();
-
-        return extension.equals(".jpg")
-                || extension.equals(".jpeg")
-                || extension.equals(".png")
-                || extension.equals(".gif")
-                || extension.equals(".tif")
-                || extension.equals(".tiff")
-                || extension.equals(".webp");
-    }
-
-    // =========================================================
-    // EXTENSION
-    // =========================================================
-
-    private String getExtension(File file) {
-
-        String name = file.getName();
-
-        int dot = name.lastIndexOf('.');
-
-        if (dot < 0) {
-            return "";
-        }
-
-        return name.substring(dot);
-    }
-
-    // =========================================================
-    // FILE SIZE
-    // =========================================================
-
-    private String formatFileSize(long bytes) {
-
-        if (bytes < 1024) {
-            return bytes + " B";
-        }
-
-        double kb = bytes / 1024.0;
-
-        if (kb < 1024) {
-            return String.format(
-                    "%.2f KB",
-                    kb
-            );
-        }
-
-        double mb = kb / 1024.0;
-
-        if (mb < 1024) {
-            return String.format(
-                    "%.2f MB",
-                    mb
-            );
-        }
-
-        double gb = mb / 1024.0;
-
-        return String.format(
-                "%.2f GB",
-                gb
+        return searchGoogleLens(
+                publicImageUrl
         );
     }
 
     // =========================================================
-    // SHA-256
+    // UPLOAD TO IMGDB
     // =========================================================
 
-    private String calculateSha256(File file) {
+    private String uploadImage(
+            File imageFile
+    ) throws Exception {
 
-        try {
+        String boundary =
+                "----OmenXBoundary"
+                        + System.currentTimeMillis();
 
-            MessageDigest digest =
-                    MessageDigest.getInstance("SHA-256");
+        byte[] fileBytes =
+                Files.readAllBytes(
+                        imageFile.toPath()
+                );
 
-            try (FileInputStream input =
-                         new FileInputStream(file)) {
+        String fileName =
+                imageFile.getName();
 
-                byte[] buffer = new byte[8192];
+        String contentType =
+                Files.probeContentType(
+                        imageFile.toPath()
+                );
 
-                int bytesRead;
+        if (contentType == null) {
 
-                while ((bytesRead =
-                        input.read(buffer)) != -1) {
+            contentType =
+                    "application/octet-stream";
+        }
 
-                    digest.update(
-                            buffer,
-                            0,
-                            bytesRead
-                    );
-                }
-            }
+        byte[] header =
+                (
+                        "--" + boundary + "\r\n" +
+                        "Content-Disposition: form-data; " +
+                        "name=\"file\"; " +
+                        "filename=\"" + fileName + "\"\r\n" +
+                        "Content-Type: " + contentType + "\r\n\r\n"
+                ).getBytes();
 
-            byte[] hashBytes =
-                    digest.digest();
+        byte[] footer =
+                (
+                        "\r\n--" +
+                        boundary +
+                        "--\r\n"
+                ).getBytes();
 
-            StringBuilder hash =
-                    new StringBuilder();
+        byte[] body =
+                new byte[
+                        header.length +
+                        fileBytes.length +
+                        footer.length
+                ];
 
-            for (byte b : hashBytes) {
+        System.arraycopy(
+                header,
+                0,
+                body,
+                0,
+                header.length
+        );
 
-                hash.append(
-                        String.format(
-                                "%02x",
-                                b
+        System.arraycopy(
+                fileBytes,
+                0,
+                body,
+                header.length,
+                fileBytes.length
+        );
+
+        System.arraycopy(
+                footer,
+                0,
+                body,
+                header.length +
+                        fileBytes.length,
+                footer.length
+        );
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(
+                                URI.create(
+                                        UPLOAD_URL
+                                )
+                        )
+                        .header(
+                                "Content-Type",
+                                "multipart/form-data; boundary="
+                                        + boundary
+                        )
+                        .POST(
+                                HttpRequest.BodyPublishers.ofByteArray(
+                                        body
+                                )
+                        )
+                        .build();
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                );
+
+        if (response.statusCode() != 201) {
+
+            throw new IOException(
+                    "Image upload failed. HTTP "
+                            + response.statusCode()
+                            + "\n"
+                            + response.body()
+            );
+        }
+
+        JsonNode json =
+                objectMapper.readTree(
+                        response.body()
+                );
+
+        JsonNode urlNode =
+                json.get("url");
+
+        if (urlNode == null ||
+                urlNode.asText().isBlank()) {
+
+            throw new IOException(
+                    "imgdb.io did not return an image URL."
+            );
+        }
+
+        return urlNode.asText();
+    }
+
+    // =========================================================
+    // QUANTICDATA GOOGLE LENS
+    // =========================================================
+
+    private List<Match> searchGoogleLens(
+            String imageUrl
+    ) throws Exception {
+
+        String jsonBody =
+                objectMapper.createObjectNode()
+                        .put(
+                                "image_url",
+                                imageUrl
+                        )
+                        .put(
+                                "max_results",
+                                20
+                        )
+                        .toString();
+
+        HttpRequest request =
+                HttpRequest.newBuilder()
+                        .uri(
+                                URI.create(
+                                        QUANTICDATA_URL
+                                )
+                        )
+                        .header(
+                                "Authorization",
+                                "Bearer " + apiKey
+                        )
+                        .header(
+                                "Content-Type",
+                                "application/json"
+                        )
+                        .POST(
+                                HttpRequest.BodyPublishers.ofString(
+                                        jsonBody
+                                )
+                        )
+                        .build();
+
+        HttpResponse<String> response =
+                httpClient.send(
+                        request,
+                        HttpResponse.BodyHandlers.ofString()
+                );
+
+        if (response.statusCode() < 200 ||
+                response.statusCode() >= 300) {
+
+            throw new IOException(
+                    "Reverse image search failed. HTTP "
+                            + response.statusCode()
+                            + "\n"
+                            + response.body()
+            );
+        }
+
+        return parseResults(
+                response.body()
+        );
+    }
+
+    // =========================================================
+    // PARSE RESULTS
+    // =========================================================
+
+    private List<Match> parseResults(
+            String response
+    ) throws Exception {
+
+        List<Match> matches =
+                new ArrayList<>();
+
+        JsonNode root =
+                objectMapper.readTree(
+                        response
+                );
+
+        JsonNode payload =
+                root.path("payload");
+
+        JsonNode results =
+                payload.path("results");
+
+        /*
+         * QuanticData may return the result rows
+         * under the payload depending on collector
+         * response version.
+         */
+
+        if (!results.isArray()) {
+
+            results =
+                    payload.path("rows");
+        }
+
+        if (!results.isArray()) {
+
+            results =
+                    root.path("results");
+        }
+
+        if (results.isArray()) {
+
+            for (JsonNode item : results) {
+
+                String title =
+                        text(
+                                item,
+                                "title"
+                        );
+
+                String source =
+                        text(
+                                item,
+                                "source"
+                        );
+
+                String domain =
+                        text(
+                                item,
+                                "domain"
+                        );
+
+                String link =
+                        text(
+                                item,
+                                "link"
+                        );
+
+                String image =
+                        text(
+                                item,
+                                "image"
+                        );
+
+                String thumbnail =
+                        text(
+                                item,
+                                "thumbnail"
+                        );
+
+                matches.add(
+                        new Match(
+                                title,
+                                source,
+                                domain,
+                                link,
+                                image,
+                                thumbnail
                         )
                 );
             }
-
-            return hash.toString();
-
-        } catch (Exception e) {
-
-            return null;
         }
+
+        return matches;
     }
 
     // =========================================================
-    // GPS / EXIF
+    // SAFE JSON TEXT
     // =========================================================
 
-    private void readGpsMetadata(
-            File imageFile,
-            Result result
+    private String text(
+            JsonNode node,
+            String field
     ) {
 
-        try {
+        JsonNode value =
+                node.get(field);
 
-            Metadata metadata =
-                    ImageMetadataReader
-                            .readMetadata(imageFile);
+        if (value == null ||
+                value.isNull()) {
 
-            GpsDirectory gps =
-                    metadata.getFirstDirectoryOfType(
-                            GpsDirectory.class
-                    );
-
-            if (gps == null) {
-
-                result.information.put(
-                        "GPS",
-                        "Not available"
-                );
-
-                return;
-            }
-
-            if (gps.getGeoLocation() == null) {
-
-                result.information.put(
-                        "GPS",
-                        "GPS directory found, but coordinates are unavailable"
-                );
-
-                return;
-            }
-
-            double latitude =
-                    gps.getGeoLocation().getLatitude();
-
-            double longitude =
-                    gps.getGeoLocation().getLongitude();
-
-            result.latitude = latitude;
-            result.longitude = longitude;
-            result.hasGps = true;
-
-            result.information.put(
-                    "GPS",
-                    "Available"
-            );
-
-            result.information.put(
-                    "Latitude",
-                    String.format(
-                            "%.6f",
-                            latitude
-                    )
-            );
-
-            result.information.put(
-                    "Longitude",
-                    String.format(
-                            "%.6f",
-                            longitude
-                    )
-            );
-
-        } catch (Exception e) {
-
-            result.information.put(
-                    "GPS",
-                    "Unable to read EXIF data"
-            );
+            return "";
         }
+
+        return value.asText("");
+    }
+
+    // =========================================================
+    // SHUTDOWN
+    // =========================================================
+
+    public void shutdown() {
+        // HttpClient does not require explicit shutdown.
     }
 }

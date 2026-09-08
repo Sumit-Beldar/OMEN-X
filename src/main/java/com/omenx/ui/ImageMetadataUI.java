@@ -20,6 +20,8 @@ import java.util.concurrent.Executors;
 // Handles image selection and metadata display.
 // =========================================================
 
+import com.omenx.service.ScanService;
+
 public class ImageMetadataUI {
 
     private static final String BG = "#0A0E12";
@@ -31,14 +33,22 @@ public class ImageMetadataUI {
     private static final String BLUE = "#5B9BD5";
 
     private final Runnable backAction;
+    private final ScanService scanService;
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
 
     public ImageMetadataUI(
             Runnable backAction
     ) {
+        this(backAction, null);
+    }
 
+    public ImageMetadataUI(
+            Runnable backAction,
+            ScanService scanService
+    ) {
         this.backAction = backAction;
+        this.scanService = scanService;
     }
 
     // =========================================================
@@ -83,35 +93,27 @@ public class ImageMetadataUI {
                 Priority.ALWAYS
         );
 
-        Button selectButton =
-                new Button(
-                        "Select Image…"
-                );
+        Label dropIcon = new Label("📁");
+        dropIcon.setStyle("-fx-font-size: 28px;");
 
-        selectButton.setPrefHeight(40);
+        Label dropText = new Label("Drag & Drop image file here, or click to browse");
+        dropText.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
 
-        selectButton.setStyle(
-                "-fx-background-color: " + GREEN + ";" +
-                "-fx-text-fill: #0A0E12;" +
-                "-fx-font-weight: bold;" +
-                "-fx-background-radius: 6px;" +
-                "-fx-cursor: hand;"
-        );
+        Label dropSub = new Label("Supports JPG, PNG, GIF, TIFF, WEBP EXIF extraction");
+        dropSub.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
 
-        Label fileLabel =
-                new Label(
-                        "No image selected"
-                );
+        Button selectButton = new Button("Choose Image File…");
+        selectButton.getStyleClass().add("btn-primary");
 
-        fileLabel.setStyle(
-                "-fx-text-fill: " + MUTED + ";"
-        );
+        VBox dropZone = new VBox(8, dropIcon, dropText, dropSub, selectButton);
+        dropZone.getStyleClass().add("drop-zone");
+        dropZone.setAlignment(Pos.CENTER);
 
         VBox results =
                 new VBox(
                         8,
                         createEmptyState(
-                                "Select an image to begin metadata analysis."
+                                "Select or drop an image above to analyze EXIF metadata."
                         )
                 );
 
@@ -119,14 +121,9 @@ public class ImageMetadataUI {
                 new ScrollPane(results);
 
         scroll.setFitToWidth(true);
-
+        scroll.getStyleClass().add("scroll-pane");
         scroll.setHbarPolicy(
                 ScrollPane.ScrollBarPolicy.NEVER
-        );
-
-        scroll.setStyle(
-                "-fx-background: transparent;" +
-                "-fx-background-color: transparent;"
         );
 
         VBox.setVgrow(
@@ -134,85 +131,65 @@ public class ImageMetadataUI {
                 Priority.ALWAYS
         );
 
-        // =====================================================
-        // IMAGE SELECTION
-        // =====================================================
-
-        selectButton.setOnAction(e -> {
-
-            FileChooser chooser =
-                    new FileChooser();
-
-            chooser.setTitle(
-                    "Select Image"
-            );
-
-            chooser.getExtensionFilters().add(
-                    new FileChooser.ExtensionFilter(
-                            "Image Files",
-                            "*.jpg",
-                            "*.jpeg",
-                            "*.png",
-                            "*.gif",
-                            "*.tif",
-                            "*.tiff",
-                            "*.webp"
-                    )
-            );
-
-            Window window =
-                    selectButton
-                            .getScene()
-                            .getWindow();
-
-            File file =
-                    chooser.showOpenDialog(
-                            window
-                    );
-
-            if (file == null) {
-                return;
-            }
-
-            fileLabel.setText(
-                    file.getName()
-            );
+        // Handler for processing file selection/drop
+        java.util.function.Consumer<File> processFile = file -> {
+            if (file == null) return;
 
             selectButton.setDisable(true);
-
             results.getChildren().setAll(
-                    createEmptyState(
-                            "Reading EXIF and image metadata…"
-                    )
+                    createEmptyState("Reading EXIF and image metadata…")
             );
 
             executor.submit(() -> {
-
                 ImageMetadataScanner.Result result =
-                        new ImageMetadataScanner()
-                                .scan(file);
+                        new ImageMetadataScanner().scan(file);
 
                 Platform.runLater(() -> {
-
-                    renderImageMetadata(
-                            results,
-                            result
-                    );
-
+                    renderImageMetadataWithPreview(results, result, file);
                     selectButton.setDisable(false);
                 });
             });
+        };
+
+        selectButton.setOnAction(e -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Select Image File");
+            chooser.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter(
+                            "Image Files",
+                            "*.jpg", "*.jpeg", "*.png", "*.gif", "*.tif", "*.tiff", "*.webp"
+                    )
+            );
+            Window window = selectButton.getScene().getWindow();
+            File selectedFile = chooser.showOpenDialog(window);
+            if (selectedFile != null) {
+                processFile.accept(selectedFile);
+            }
+        });
+
+        dropZone.setOnDragOver(event -> {
+            if (event.getDragboard().hasFiles()) {
+                event.acceptTransferModes(javafx.scene.input.TransferMode.COPY);
+            }
+            event.consume();
+        });
+
+        dropZone.setOnDragDropped(event -> {
+            javafx.scene.input.Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasFiles() && !db.getFiles().isEmpty()) {
+                processFile.accept(db.getFiles().get(0));
+                success = true;
+            }
+            event.setDropCompleted(success);
+            event.consume();
         });
 
         VBox content =
                 new VBox(
                         18,
                         header,
-                        new HBox(
-                                12,
-                                selectButton,
-                                fileLabel
-                        ),
+                        dropZone,
                         scroll
                 );
 
@@ -236,13 +213,54 @@ public class ImageMetadataUI {
     // RENDER METADATA
     // =========================================================
 
+    private void renderImageMetadataWithPreview(
+            VBox results,
+            ImageMetadataScanner.Result result,
+            File file
+    ) {
+        results.getChildren().clear();
+
+        if (file != null && file.exists()) {
+            try {
+                javafx.scene.image.Image img = new javafx.scene.image.Image(file.toURI().toString(), 280, 280, true, true);
+                javafx.scene.image.ImageView imgView = new javafx.scene.image.ImageView(img);
+                imgView.setFitWidth(240);
+                imgView.setFitHeight(240);
+                imgView.setPreserveRatio(true);
+
+                Label fileTitle = new Label("📷  " + file.getName());
+                fileTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+                Label pathLabel = new Label(file.getAbsolutePath());
+                pathLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px;");
+
+                VBox previewBox = new VBox(8, imgView, fileTitle, pathLabel);
+                previewBox.setAlignment(Pos.CENTER);
+                previewBox.getStyleClass().add("cyber-card");
+                previewBox.setPadding(new Insets(16));
+
+                results.getChildren().add(previewBox);
+            } catch (Exception ignored) {}
+        }
+
+        if (scanService != null && file != null) {
+            scanService.saveScan(
+                    "Image Metadata",
+                    file.getName(),
+                    result.metadata != null ? result.metadata.size() : 0,
+                    java.time.LocalTime.now().format(
+                            java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                    )
+            );
+        }
+
+        renderImageMetadata(results, result);
+    }
+
     private void renderImageMetadata(
             VBox results,
             ImageMetadataScanner.Result result
     ) {
-
-        results.getChildren().clear();
-
         if (result.metadata.isEmpty()) {
 
             results.getChildren().add(

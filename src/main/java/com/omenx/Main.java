@@ -22,6 +22,9 @@ import com.omenx.service.ReportService;
 import com.omenx.ui.DashboardUI;
 import com.omenx.ui.ImageMetadataUI;
 import com.omenx.ui.ReverseImageUI;
+import com.omenx.ui.IPAddressUI;
+import com.omenx.ui.MalwareAnalysisUI;
+import com.omenx.ui.LoginUI;
 
 // =========================================================
 // JAVAFX IMPORTS
@@ -61,21 +64,21 @@ public class Main extends Application {
     // COLOR SYSTEM
     // Existing OMEN-X dashboard color system
     // =========================================================
-    private static final String BG          = "#0A0E12";
-    private static final String PANEL       = "#11161C";
-    private static final String SURFACE     = "#161C23";
-    private static final String SURFACE_2   = "#1A2129";
-    private static final String BORDER      = "#1E262F";
-    private static final String BORDER_SOFT = "#252D37";
-    private static final String TEXT        = "#E8EEF4";
-    private static final String MUTED       = "#6B7785";
-    private static final String MUTED_2     = "#8A96A3";
-    private static final String GREEN       = "#3DDC97";
-    private static final String RED         = "#FF6B6B";
-    private static final String YELLOW      = "#F0C75E";
-    private static final String BLUE        = "#5B9BD5";
-    private static final String PURPLE      = "#A78BFA";
-    private static final String CYAN        = "#56B6C2";
+    private static final String BG          = "#07080C";
+    private static final String PANEL       = "#0E0F14";
+    private static final String SURFACE     = "#131419";
+    private static final String SURFACE_2   = "#18191F";
+    private static final String BORDER      = "#1C1012";
+    private static final String BORDER_SOFT = "#2A1518";
+    private static final String TEXT        = "#E8E4E4";
+    private static final String MUTED       = "#6B6060";
+    private static final String MUTED_2     = "#8A7E7E";
+    private static final String GREEN       = "#22C55E";
+    private static final String RED         = "#DC2626";
+    private static final String YELLOW      = "#EAB308";
+    private static final String BLUE        = "#DC2626";
+    private static final String PURPLE      = "#F97316";
+    private static final String CYAN        = "#DC2626";
 
     // =========================================================
     // APPLICATION STATE
@@ -110,6 +113,8 @@ public class Main extends Application {
 
     private VBox dashboardView;
     private VBox scanView;
+    private IPAddressUI ipAddressUI;
+    private MalwareAnalysisUI malwareAnalysisUI;
 
     // =========================================================
     // INVESTIGATION WORKSPACE CONTROLS
@@ -134,7 +139,15 @@ public class Main extends Application {
 
     private Label statusBarLabel;
     private Label lastScanLabel;
+    private LoginUI loginUI;
+    private String currentUsername = null;
+    private final Map<String, Button> sidebarButtons = new LinkedHashMap<>();
 
+    private void onLoginSuccess(String username) {
+        this.currentUsername = username;
+        root.setLeft(createSidebar());
+        showDashboard();
+    }
 
     // =========================================================
     // APPLICATION STARTUP
@@ -183,13 +196,9 @@ public class Main extends Application {
                             }
 
                             @Override
-public void openImageMetadata() {
-    root.setCenter(
-        new ImageMetadataUI(
-            () -> root.setCenter(dashboardView)
-        ).createView()
-    );
-}
+                            public void openImageMetadata() {
+                                Main.this.openImageMetadata();
+                            }
 
                             @Override
                             public void openReverseImage() {
@@ -204,7 +213,8 @@ public void openImageMetadata() {
 
         imageMetadataUI =
                 new ImageMetadataUI(
-                        this::showDashboard
+                        this::showDashboard,
+                        scanService
                 );
 
         // =====================================================
@@ -213,7 +223,8 @@ public void openImageMetadata() {
 
         reverseImageUI =
                 new ReverseImageUI(
-                        this::showDashboard
+                        this::showDashboard,
+                        scanService
                 );
 
         // =====================================================
@@ -232,13 +243,26 @@ public void openImageMetadata() {
         scanView =
                 createScanView();
 
+        ipAddressUI = new IPAddressUI(
+                this::showDashboard,
+                scanService
+        );
+
         // =====================================================
-        // SHOW DASHBOARD
+        // INITIALIZE MALWARE ANALYSIS UI
+        // =====================================================
+        malwareAnalysisUI = new MalwareAnalysisUI(
+                stage,
+                this::showDashboard,
+                scanService
+        );
+
+        // =====================================================
+        // INITIALIZE LOGIN UI & START ON LOGIN SCREEN
         // =====================================================
 
-        root.setCenter(
-                dashboardView
-        );
+        loginUI = new LoginUI(this::onLoginSuccess);
+        root.setCenter(loginUI.createView());
 
         // =====================================================
         // CREATE MAIN SCENE
@@ -247,17 +271,25 @@ public void openImageMetadata() {
         Scene scene =
                 new Scene(
                         root,
-                        1240,
-                        820
+                        1340,
+                        860
                 );
 
+        try {
+            if (getClass().getResource("/styles/app.css") != null) {
+                scene.getStylesheets().add(
+                        getClass().getResource("/styles/app.css").toExternalForm()
+                );
+            }
+        } catch (Exception ignored) {
+        }
+
         stage.setTitle(
-                "OMEN-X  •  Open Source Intelligence"
+                "OMEN-X  •  Open Source Intelligence Platform"
         );
 
-
-        stage.setMinWidth(980);
-        stage.setMinHeight(680);
+        stage.setMinWidth(1080);
+        stage.setMinHeight(720);
 
         stage.setScene(scene);
 
@@ -281,6 +313,111 @@ public void openImageMetadata() {
 
 
     // =========================================================
+    // PERSISTENT SIDEBAR NAVIGATION
+    // =========================================================
+
+    private VBox createSidebar() {
+        VBox sidebar = new VBox();
+        sidebar.getStyleClass().add("sidebar");
+        sidebar.setPrefWidth(230);
+        sidebar.setMinWidth(230);
+        sidebar.setPadding(new Insets(18, 14, 16, 14));
+        sidebar.setSpacing(4);
+
+        // Classification stripe
+        Label classLabel = new Label("// RESTRICTED //");
+        classLabel.setStyle("-fx-text-fill: #DC2626; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+        classLabel.setAlignment(Pos.CENTER);
+        classLabel.setMaxWidth(Double.MAX_VALUE);
+
+        Region stripe = new Region();
+        stripe.setPrefHeight(1);
+        stripe.setMaxWidth(Double.MAX_VALUE);
+        stripe.setStyle("-fx-background-color: #1C1012;");
+
+        Label logo = new Label("OMEN-X");
+        logo.setStyle("-fx-text-fill: #DC2626; -fx-font-size: 24px; -fx-font-weight: bold; -fx-letter-spacing: 3px;");
+
+        Label sub = new Label("TACTICAL OSINT PLATFORM");
+        sub.setStyle("-fx-text-fill: #4A4040; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+
+        VBox brand = new VBox(3, classLabel, stripe, logo, sub);
+        brand.setPadding(new Insets(4, 0, 14, 6));
+
+        Label navLabel = new Label("OPERATIONS");
+        navLabel.setStyle("-fx-text-fill: #4A4040; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+        navLabel.setPadding(new Insets(8, 6, 6, 6));
+
+        sidebar.getChildren().addAll(brand, navLabel);
+
+        addSidebarItem(sidebar, "Dashboard", "//>  Command Center", this::showDashboard);
+        addSidebarItem(sidebar, "Username", "@>  Username Recognition", () -> openModule("Username"));
+        addSidebarItem(sidebar, "Email", "#>  Email Exposure", () -> openModule("Email"));
+        addSidebarItem(sidebar, "Domain", "::>  Domain & DNS", () -> openModule("Domain"));
+        addSidebarItem(sidebar, "IP Address", "[]>  IP Geolocation", () -> openModule("IP Address"));
+        addSidebarItem(sidebar, "Phone", "{}>  Phone Intel", () -> openModule("Phone"));
+        addSidebarItem(sidebar, "EXIF Metadata", "<>  EXIF Metadata", this::openImageMetadata);
+        addSidebarItem(sidebar, "Reverse Image", ">>  Reverse Image", this::openReverseImageScanner);
+        addSidebarItem(sidebar, "Malware Analysis", "!!>  Malware Threat", this::openMalwareAnalysis);
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+        sidebar.getChildren().add(spacer);
+
+        // Operator Session Box
+        String displayUser = currentUsername != null ? currentUsername : "Omen-X:M1";
+        Label userLabel = new Label("[OPR]  " + displayUser);
+        userLabel.setStyle("-fx-text-fill: #DC2626; -fx-font-size: 11px; -fx-font-weight: bold;");
+
+        Button logoutBtn = new Button("DISCONNECT");
+        logoutBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #6B6060; -fx-font-size: 10px; -fx-font-weight: bold; -fx-cursor: hand; -fx-padding: 2 6 2 6; -fx-border-color: #1C1012; -fx-border-radius: 4px; -fx-background-radius: 4px;");
+
+        logoutBtn.setOnAction(e -> {
+            currentUsername = null;
+            root.setLeft(null);
+            root.setCenter(loginUI.createView());
+        });
+
+        HBox userHeader = new HBox(8, userLabel, logoutBtn);
+        userHeader.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(userLabel, Priority.ALWAYS);
+
+        Label statusText = new Label("+ SYSTEMS OPERATIONAL");
+        statusText.setStyle("-fx-text-fill: #22C55E; -fx-font-size: 10px; -fx-font-weight: bold;");
+
+        VBox statusBox = new VBox(6, userHeader, statusText);
+        statusBox.setPadding(new Insets(10, 12, 10, 12));
+        statusBox.setStyle("-fx-background-color: #0A0B10; -fx-border-color: #1C1012; -fx-border-radius: 6px; -fx-background-radius: 6px;");
+
+        sidebar.getChildren().add(statusBox);
+        return sidebar;
+    }
+
+    private void addSidebarItem(VBox sidebar, String key, String text, Runnable action) {
+        Button btn = new Button(text);
+        btn.getStyleClass().add("sidebar-button");
+        btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setOnAction(e -> {
+            action.run();
+            updateSidebarActive(key);
+        });
+        sidebarButtons.put(key, btn);
+        sidebar.getChildren().add(btn);
+    }
+
+    private void updateSidebarActive(String key) {
+        sidebarButtons.forEach((k, btn) -> {
+            if (k.equals(key)) {
+                if (!btn.getStyleClass().contains("active")) {
+                    btn.getStyleClass().add("active");
+                }
+            } else {
+                btn.getStyleClass().remove("active");
+            }
+        });
+    }
+
+    // =========================================================
     // SHOW DASHBOARD
     // Returns the application to the main dashboard
     // =========================================================
@@ -288,8 +425,7 @@ public void openImageMetadata() {
     private void showDashboard() {
 
         if (dashboardUI != null) {
-
-            dashboardUI.refreshRecentActivity(
+            dashboardUI.refreshDashboard(
                     scanService.getHistory()
             );
         }
@@ -297,6 +433,8 @@ public void openImageMetadata() {
         root.setCenter(
                 dashboardView
         );
+
+        updateSidebarActive("Dashboard");
     }
 
 
@@ -416,45 +554,22 @@ public void openImageMetadata() {
                 new TextField();
 
         targetField.setPromptText(
-                "Enter username…"
+                "Enter target username, email or domain…"
         );
 
-        targetField.setPrefHeight(42);
-
-        targetField.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-prompt-text-fill: " + MUTED + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-width: 1 0 1 0;" +
-                "-fx-padding: 0 16px;" +
-                "-fx-font-size: 13px;"
-        );
+        targetField.setPrefHeight(44);
+        targetField.getStyleClass().add("cyber-input");
 
         HBox.setHgrow(
                 targetField,
                 Priority.ALWAYS
         );
 
-
-        // =====================================================
-        // SCAN BUTTON
-        // =====================================================
-
         searchButton =
-                new Button("Scan");
+                new Button("EXECUTE SCAN");
 
-        searchButton.setPrefHeight(42);
-        searchButton.setPrefWidth(100);
-
-        searchButton.setStyle(
-                "-fx-background-color: " + GREEN + ";" +
-                "-fx-text-fill: #0A0E12;" +
-                "-fx-font-weight: bold;" +
-                "-fx-font-size: 13px;" +
-                "-fx-background-radius: 0 7px 7px 0;" +
-                "-fx-cursor: hand;"
-        );
+        searchButton.setPrefHeight(44);
+        searchButton.getStyleClass().add("btn-primary");
 
         searchButton.setOnAction(
                 e -> runScan()
@@ -464,32 +579,25 @@ public void openImageMetadata() {
                 e -> runScan()
         );
 
-
         HBox searchBar =
                 new HBox(
+                        10,
                         selectedTypeLabel,
                         targetField,
                         searchButton
                 );
 
-
-        // =====================================================
-        // ACTION BUTTONS
-        // =====================================================
-
         clearButton =
-                createGhostButton(
-                        "Clear"
-                );
+                new Button("Clear");
+        clearButton.getStyleClass().add("btn-ghost");
 
         clearButton.setOnAction(
                 e -> clearResults()
         );
 
         exportButton =
-                createGhostButton(
-                        "Copy Results"
-                );
+                new Button("Copy Results");
+        exportButton.getStyleClass().add("btn-ghost");
 
         exportButton.setOnAction(
                 e -> copyResults()
@@ -730,6 +838,19 @@ public void openImageMetadata() {
     private void openModule(
             String type
     ) {
+        updateSidebarActive(type);
+
+        if ("Malware Analysis".equals(type)) {
+            root.setCenter(malwareAnalysisUI.getView());
+            return;
+        }
+
+        if ("IP Address".equals(type)) {
+            root.setCenter(
+                    ipAddressUI.createView()
+            );
+            return;
+        }
 
         selectedType[0] =
                 type;
@@ -784,7 +905,7 @@ public void openImageMetadata() {
     // =========================================================
 
     private void openImageMetadata() {
-
+        updateSidebarActive("EXIF Metadata");
         root.setCenter(
                 imageMetadataUI.createView()
         );
@@ -797,10 +918,20 @@ public void openImageMetadata() {
     // =========================================================
 
     private void openReverseImageScanner() {
-
+        updateSidebarActive("Reverse Image");
         root.setCenter(
                 reverseImageUI.createView()
         );
+    }
+
+
+    // =========================================================
+    // OPEN MALWARE ANALYSIS MODULE
+    // Delegates the file analysis UI to MalwareAnalysisUI
+    // =========================================================
+    private void openMalwareAnalysis() {
+        updateSidebarActive("Malware Analysis");
+        root.setCenter(malwareAnalysisUI.getView());
     }
 
 
@@ -942,16 +1073,35 @@ public void openImageMetadata() {
                 // OTHER MODULES
                 // =================================================
 
-                else {
+                else if ("Phone".equals(type)) {
 
-                    scanResults =
-                            new LinkedHashMap<>();
+    PhoneScanner scanner =
+            new PhoneScanner();
 
-                    scanResults.put(
-                            type + " Intelligence",
-                            "UNKNOWN | This intelligence module is not fully connected yet."
-                    );
-                }
+    PhoneScanner.PhoneResult phoneResult =
+            scanner.scan(
+                    target,
+                    "IN"
+            );
+
+    scanResults =
+            new LinkedHashMap<>();
+
+    scanResults.put(
+            "Phone Intelligence",
+            buildPhoneResult(phoneResult)
+    );
+
+} else {
+
+    scanResults =
+            new LinkedHashMap<>();
+
+    scanResults.put(
+            type + " Intelligence",
+            "UNKNOWN | This intelligence module is not fully connected yet."
+    );
+}
 
             } catch (Exception ex) {
 
@@ -1140,6 +1290,13 @@ public void openImageMetadata() {
                 found,
                 time
         );
+        // =====================================================
+// REFRESH DASHBOARD METRICS
+// =====================================================
+
+dashboardUI.refreshDashboard(
+        scanService.getHistory()
+);
 
 
         // =====================================================
@@ -1975,6 +2132,59 @@ public void openImageMetadata() {
         );
 
         return button;
+    }
+
+
+    // =========================================================
+    // PHONE RESULT FORMATTER
+    // Converts the detailed PhoneScanner result into text that
+    // can be rendered by the existing result-row UI.
+    // =========================================================
+    private String buildPhoneResult(PhoneScanner.PhoneResult result) {
+
+        if (result == null) {
+            return "UNKNOWN | No phone intelligence was returned.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("FOUND | ");
+        sb.append("BASIC INFORMATION\n");
+        sb.append("Phone Number: ").append(safe(result.getInputNumber())).append("\n");
+        sb.append("Country: ").append(safe(result.getCountry())).append("\n");
+        sb.append("Country Code: ").append(safe(result.getCountryCode())).append("\n");
+        sb.append("National Number: ").append(safe(result.getNationalNumber())).append("\n");
+        sb.append("International Format: ").append(safe(result.getInternationalFormat())).append("\n");
+        sb.append("National Format: ").append(safe(result.getNationalFormat())).append("\n");
+        sb.append("E.164 Format: ").append(safe(result.getE164Format())).append("\n\n");
+
+        sb.append("VALIDATION\n");
+        sb.append("Possible Number: ").append(result.isPossible() ? "Yes" : "No").append("\n");
+        sb.append("Valid Number: ").append(result.isValid() ? "Yes" : "No").append("\n");
+        sb.append("Number Type: ").append(safe(result.getNumberType())).append("\n");
+        sb.append("Country/Region Match: ").append(result.isRegionMatch() ? "Yes" : "No").append("\n\n");
+
+        sb.append("CARRIER / NETWORK\n");
+        sb.append("Original Carrier: ").append(safe(result.getOriginalCarrier())).append("\n");
+        sb.append("Line Type: ").append(safe(result.getNumberType())).append("\n\n");
+
+        sb.append("LOCATION\n");
+        sb.append("Region: ").append(safe(result.getRegion())).append("\n");
+        sb.append("Geographic Area: ").append(safe(result.getGeographicDescription())).append("\n");
+        sb.append("Region Description: ").append(safe(result.getRegionDescription())).append("\n");
+        sb.append("Time Zone(s): ").append(safe(result.getTimezones())).append("\n\n");
+
+        sb.append("OSINT / REPUTATION\n");
+        sb.append("Spam Reports: Not checked\n");
+        sb.append("Fraud Reports: Not checked\n");
+        sb.append("Public Caller Name: Not available\n");
+        sb.append("Public References: Not checked");
+
+        return sb.toString();
+    }
+
+    private String safe(String value) {
+        return value == null || value.isBlank() ? "Not available" : value;
     }
 
 
