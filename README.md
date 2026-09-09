@@ -2,9 +2,11 @@
 
 ### Open Source Intelligence & Security Investigation Platform
 
-OMEN-X is a desktop-based OSINT and security investigation tool designed to bring multiple reconnaissance and analysis capabilities together in a single, clean dashboard.
+OMEN-X is a desktop-based OSINT and security investigation platform designed to bring multiple reconnaissance, information-gathering, and analysis capabilities together in a single application.
 
-It allows investigators, cybersecurity students, and security researchers to perform different types of information gathering and analysis from one application.
+It is built with a modular architecture, allowing individual investigation modules and UI components to be developed and improved independently while maintaining a consistent dashboard experience.
+
+OMEN-X is intended for cybersecurity students, security researchers, investigators, and users learning about Open-Source Intelligence (OSINT).
 
 ---
 
@@ -12,42 +14,53 @@ It allows investigators, cybersecurity students, and security researchers to per
 
 ### 🔎 OSINT Investigation
 
-OMEN-X provides several investigation modules:
+OMEN-X currently provides multiple investigation modules through a centralized dashboard.
 
-- 👤 **Username Search**
-  - Search for a username across supported platforms.
-  - Identify potentially associated profiles.
-  - View investigation results from a single dashboard.
+#### 👤 Username Investigation
 
-- 📧 **Email Investigation**
-  - Analyze email addresses.
-  - Perform basic email-related OSINT checks.
-  - Display investigation results in the dashboard.
+- Search for usernames across supported platforms.
+- Identify potentially associated online profiles.
+- Present investigation results in a structured interface.
 
-- 🌐 **Domain Investigation**
-  - Analyze domains.
-  - DNS information
-  - HTTP / HTTPS status
-  - SSL certificate information
-  - WHOIS information
-  - Common subdomain discovery
+#### 📧 Email Investigation
 
-- 🌍 **IP Address Investigation**
-  - Analyze IP addresses.
-  - Gather available network and geolocation-related information.
-  - Display results in a structured interface.
+- Perform basic email-related OSINT checks.
+- Analyze email addresses.
+- Display available investigation information through the OMEN-X interface.
 
-- 📱 **Phone Number Investigation**
-  - Perform basic phone-number OSINT checks.
-  - Display investigation results in the dashboard.
+#### 🌐 Domain Investigation
+
+Analyze domains and retrieve available information such as:
+
+- DNS information
+- HTTP / HTTPS status
+- SSL certificate information
+- WHOIS information
+- Common subdomain discovery
+- Domain-related technical information
+
+#### 🌍 IP Address Investigation
+
+Analyze IP addresses and retrieve available information including:
+
+- IP information
+- Network-related details
+- Available geolocation information
+- Investigation results in a structured interface
+
+#### 📱 Phone Number Investigation
+
+- Perform basic phone-number OSINT checks.
+- Analyze available information related to a phone number.
+- Present results through the investigation interface.
 
 ---
 
 ## 🖼️ Image Metadata Scanner
 
-OMEN-X also includes an **Image Metadata Scanner** powered by metadata extraction.
+OMEN-X includes an Image Metadata Scanner for extracting available metadata from image files.
 
-Users can select an image and extract available metadata such as:
+The scanner can extract information such as:
 
 - File name
 - File extension
@@ -66,9 +79,9 @@ Users can select an image and extract available metadata such as:
 - GPS latitude
 - GPS longitude
 
-### 📍 GPS Analysis
+### 📍 GPS Metadata
 
-If an image contains GPS metadata, OMEN-X can extract:
+If GPS information is embedded in an image, OMEN-X can extract the available:
 
 ```text
 Latitude
