@@ -1,4 +1,4 @@
-# ðŸ•µï¸ OMEN-X
+# 🕵️ OMEN-X
 
 ## Open Source Intelligence & Security Investigation Platform
 
@@ -10,11 +10,11 @@ OMEN-X is designed for **cybersecurity students, security researchers, investiga
 
 ---
 
-## ðŸš€ Features
+## 🚀 Features
 
 OMEN-X provides **8 integrated investigation modules** accessible through the main dashboard.
 
-### 1. ðŸ‘¤ Username Investigation
+### 1. 👤 Username Investigation
 
 The Username Investigation module allows users to investigate usernames across supported online platforms.
 
@@ -31,7 +31,7 @@ The Username Investigation module allows users to investigate usernames across s
 - Result presentation
 - Investigation status
 
-### 2. ðŸ“§ Email Investigation
+### 2. 📧 Email Investigation
 
 The Email Investigation module performs OSINT checks related to an email address.
 
@@ -47,7 +47,7 @@ The Email Investigation module performs OSINT checks related to an email address
 - Investigation results
 - Structured information display
 
-### 3. ðŸŒ Domain Investigation
+### 3. 🌐 Domain Investigation
 
 The Domain Investigation module provides technical and OSINT information about a domain.
 
@@ -66,7 +66,7 @@ The Domain Investigation module provides technical and OSINT information about a
 3. The collected information is processed.
 4. Results are displayed through the domain investigation interface.
 
-### 4. ðŸŒ IP Address Investigation
+### 4. 🌍 IP Address Investigation
 
 The IP Investigation module analyzes an IP address and retrieves available network-related information.
 
@@ -83,7 +83,7 @@ The IP Investigation module analyzes an IP address and retrieves available netwo
 3. Available information is collected.
 4. Results are presented in a structured interface.
 
-### 5. ðŸ“± Phone Number Investigation
+### 5. 📱 Phone Number Investigation
 
 The Phone Number Investigation module performs OSINT checks related to phone numbers.
 
@@ -99,7 +99,7 @@ The Phone Number Investigation module performs OSINT checks related to phone num
 - Carrier-related information where available
 - Structured result presentation
 
-### 6. ðŸ–¼ï¸ Image Metadata Investigation
+### 6. 🖼️ Image Metadata Investigation
 
 The Image Metadata module allows users to select an image and extract available metadata from the file.
 
@@ -132,7 +132,7 @@ OMEN-X can extract available information such as:
 3. Available metadata is extracted.
 4. The information is displayed in the Image Metadata interface.
 
-**ðŸ“ GPS Analysis**
+**🔍 GPS Analysis**
 
 If GPS metadata exists inside the image, OMEN-X can extract:
 
@@ -143,7 +143,7 @@ Longitude
 
 The availability of GPS information depends on whether the original image contains GPS metadata.
 
-### 7. ðŸ–¼ï¸ Reverse Image Investigation
+### 7. 🖼️ Reverse Image Investigation
 
 The Reverse Image Investigation module provides an interface for image-based OSINT investigation.
 
@@ -155,7 +155,7 @@ The Reverse Image Investigation module provides an interface for image-based OSI
 
 The module is designed to assist with investigating potential image sources and related information.
 
-### 8. ðŸ” Investigation & Scan Management
+### 8. 🔍 Investigation & Scan Management
 
 The Investigation and Scan Management module provides the foundation for organizing investigation activity across OMEN-X.
 
@@ -173,7 +173,7 @@ The scan management system also supports the dashboard statistics used to provid
 
 ---
 
-## ðŸ“Š Dashboard
+## 📊 Dashboard
 
 The OMEN-X Dashboard is the central interface of the application.
 
@@ -194,7 +194,7 @@ The dashboard provides a single workspace for accessing and managing the differe
 
 ---
 
-## ðŸ” Login System
+## 🔐 Login System
 
 OMEN-X includes a dedicated login interface that acts as the entry point to the application.
 
@@ -209,7 +209,7 @@ After successful login, the user is taken to the OMEN-X investigation dashboard.
 
 ---
 
-## ðŸ“ˆ Scan & Finding Statistics
+## 📈 Scan & Finding Statistics
 
 OMEN-X maintains investigation statistics through its scan management system.
 
@@ -222,7 +222,7 @@ These statistics provide users with an overview of investigation activity perfor
 
 ---
 
-## ðŸ§© Modular Architecture
+## 🧩 Modular Architecture
 
 OMEN-X uses a modular Java architecture where investigation functionality and UI components are separated into dedicated classes.
 
@@ -238,45 +238,45 @@ A simplified project structure is:
 
 ```text
 OMEN-X
-â”‚
-â”œâ”€â”€ pom.xml
-â”œâ”€â”€ README.md
-â”‚
-â””â”€â”€ src
-    â””â”€â”€ main
-        â”œâ”€â”€ java
-        â”‚   â””â”€â”€ com
-        â”‚       â””â”€â”€ omenx
-        â”‚           â”‚
-        â”‚           â”œâ”€â”€ Main.java
-        â”‚           â”œâ”€â”€ DomainScanner.java
-        â”‚           â”œâ”€â”€ EmailScanner.java
-        â”‚           â”œâ”€â”€ IPScanner.java
-        â”‚           â”œâ”€â”€ PhoneScanner.java
-        â”‚           â”œâ”€â”€ MalwareScanner.java
-        â”‚           â”‚
-        â”‚           â”œâ”€â”€ database/
-        â”‚           â”œâ”€â”€ model/
-        â”‚           â”œâ”€â”€ osint/
-        â”‚           â”œâ”€â”€ service/
-        â”‚           â””â”€â”€ ui/
-        â”‚               â”œâ”€â”€ DashboardUI.java
-        â”‚               â”œâ”€â”€ ImageMetadataUI.java
-        â”‚               â”œâ”€â”€ ReverseImageUI.java
-        â”‚               â”œâ”€â”€ InvestigationUI.java
-        â”‚               â””â”€â”€ ...
-        â”‚
-        â””â”€â”€ resources
-            â””â”€â”€ css
-                â”œâ”€â”€ omenx.css
-                â””â”€â”€ hud.css
+│
+├── pom.xml
+├── README.md
+│
+└── src
+    └── main
+        ├── java
+        │   └── com
+        │       └── omenx
+        │           │
+        │           ├── Main.java
+        │           ├── DomainScanner.java
+        │           ├── EmailScanner.java
+        │           ├── IPScanner.java
+        │           ├── PhoneScanner.java
+        │           ├── MalwareScanner.java
+        │           │
+        │           ├── database/
+        │           ├── model/
+        │           ├── osint/
+        │           ├── service/
+        │           └── ui/
+        │               ├── DashboardUI.java
+        │               ├── ImageMetadataUI.java
+        │               ├── ReverseImageUI.java
+        │               ├── InvestigationUI.java
+        │               └── ...
+        │
+        └── resources
+            └── css
+                ├── omenx.css
+                └── hud.css
 ```
 
 The project structure may contain additional classes and components depending on the current version.
 
 ---
 
-## ðŸ› ï¸ Technology Stack
+## 🛠️ Technology Stack
 
 OMEN-X is built using:
 
@@ -294,7 +294,7 @@ The application uses a modular architecture that allows additional technologies 
 
 ---
 
-## ðŸ’» System Requirements
+## 💻 System Requirements
 
 **Required**
 - Windows 10 or Windows 11
@@ -309,7 +309,7 @@ The application uses a modular architecture that allows additional technologies 
 
 ---
 
-## ðŸ“¥ Installation
+## 📥 Installation
 
 ### 1. Install Java
 Install a compatible Java JDK.
@@ -338,7 +338,7 @@ Install the **Extension Pack for Java** from the VS Code Extensions marketplace.
 
 ---
 
-## ðŸ“¦ Download OMEN-X
+## 📦 Download OMEN-X
 
 Clone the GitHub repository:
 
@@ -349,7 +349,7 @@ cd OMEN-X
 
 ---
 
-## ðŸ”¨ Build OMEN-X
+## 🔨 Build OMEN-X
 
 ```bash
 mvn clean compile
@@ -358,13 +358,12 @@ mvn clean compile
 Maven will automatically download the dependencies defined in the project and compile the source code.
 
 A successful build will end with:
-```
 BUILD SUCCESS
-```
+
 
 ---
 
-## â–¶ï¸ Run OMEN-X
+## ▶️ Run OMEN-X
 
 **Recommended way (JavaFX Maven plugin):**
 
@@ -376,16 +375,14 @@ mvn javafx:run
 - `src/main/java/com/omenx/Main.java`
 
 The main application class is:
-```
 com.omenx.Main
-```
 
 ---
 
-## ðŸ’» Running Through Visual Studio Code
+## 💻 Running Through Visual Studio Code
 
 1. Open Visual Studio Code.
-2. Select **File â†’ Open Folder**.
+2. Select **File → Open Folder**.
 3. Select the OMEN-X project directory.
 4. Make sure the Java Extension Pack is installed.
 5. Allow VS Code to load the Maven project.
@@ -399,7 +396,7 @@ mvn clean compile
 
 ---
 
-## ðŸ§¹ Clean and Rebuild
+## 🧹 Clean and Rebuild
 
 If you encounter build problems:
 
@@ -412,7 +409,7 @@ After a successful compilation, run the application again.
 
 ---
 
-## âš ï¸ Troubleshooting
+## ⚠️ Troubleshooting
 
 **`'java' is not recognized`**
 - Make sure Java JDK is installed and configured in the system PATH.
@@ -438,7 +435,7 @@ mvn javafx:run
 
 ---
 
-## ðŸ”’ Responsible Use
+## 🔒 Responsible Use
 
 OMEN-X is intended for:
 - Cybersecurity education
@@ -461,7 +458,7 @@ Only investigate systems, accounts, domains, IP addresses, phone numbers, images
 
 ---
 
-## ðŸš€ Future Development
+## 🚀 Future Development
 
 Although OMEN-X is fully developed in its current version, the modular architecture allows the project to continue evolving.
 
@@ -478,11 +475,10 @@ The architecture is designed so that new functionality can be integrated without
 
 ---
 
-## ðŸ“„ License
+## 📄 License
 
 This project is open source. Please check the repository for the specific license details.
 
 ---
 
 **Made for cybersecurity education and legitimate OSINT research.**
-```
