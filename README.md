@@ -404,6 +404,8 @@ API_KEY_2=YOUR_API_KEY_HERE
 6. Open `Main.java`.
 7. Select **Run**.
 
+```
+
 You can also compile first:
 ```bash
 mvn clean compile
