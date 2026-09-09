@@ -379,6 +379,21 @@ com.omenx.Main
 
 ---
 
+# 🔑 API Configuration
+
+OMEN-X may use external APIs and services for certain investigation capabilities.
+
+For security reasons, API keys and other private credentials are **not included in the GitHub repository**.
+
+Before running OMEN-X, users must obtain their own API credentials for the services required by the corresponding modules and configure them locally.
+
+API keys should never be committed to GitHub.
+
+Create the required local configuration file and add your credentials:
+
+```text
+API_KEY_1=YOUR_API_KEY_HERE
+API_KEY_2=YOUR_API_KEY_HERE
 ## 💻 Running Through Visual Studio Code
 
 1. Open Visual Studio Code.
