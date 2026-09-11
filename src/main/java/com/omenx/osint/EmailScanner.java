@@ -113,12 +113,8 @@ public class EmailScanner {
             String breachSection = extractBreaches(json);
 
             if (!breachSection.isEmpty()) {
-                return buildResult(
-                        email,
-                        "BREACH DATA FOUND",
-                        "Known breaches returned by the API:\n\n"
-                        + breachSection
-                );
+                // Pass pipe-delimited breach names directly as details
+                return buildResult(email, "BREACH DATA FOUND", breachSection);
             }
 
             return buildResult(
@@ -149,56 +145,29 @@ public class EmailScanner {
 
     private String extractBreaches(String json) {
         int start = json.indexOf("\"breaches\"");
-        if (start == -1) {
-            return "";
-        }
-
+        if (start == -1) return "";
         int open = json.indexOf('[', start);
-        if (open == -1) {
-            return "";
-        }
-
-        int depth = 0;
-        int close = -1;
-
+        if (open == -1) return "";
+        int depth = 0, close = -1;
         for (int i = open; i < json.length(); i++) {
             char c = json.charAt(i);
-
-            if (c == '[') {
-                depth++;
-            } else if (c == ']') {
-                depth--;
-                if (depth == 0) {
-                    close = i;
-                    break;
-                }
-            }
+            if (c == '[') depth++;
+            else if (c == ']') { depth--; if (depth == 0) { close = i; break; } }
         }
-
-        if (close == -1) {
-            return "";
-        }
-
+        if (close == -1) return "";
         String section = json.substring(open + 1, close);
-
         Pattern quoted = Pattern.compile("\"([^\"]+)\"");
         java.util.regex.Matcher matcher = quoted.matcher(section);
-
-        StringBuilder result = new StringBuilder();
-        int number = 1;
-
+        // Return pipe-delimited breach names for structured rendering
+        StringBuilder names = new StringBuilder();
         while (matcher.find()) {
             String value = matcher.group(1).trim();
-
             if (!value.isEmpty()) {
-                result.append(number++)
-                        .append(". ")
-                        .append(value)
-                        .append("\n");
+                if (names.length() > 0) names.append("|");
+                names.append(value);
             }
         }
-
-        return result.toString();
+        return names.toString();
     }
 
     private String buildResult(
@@ -206,16 +175,27 @@ public class EmailScanner {
             String status,
             String details) {
 
-        return "===== OMEN-X EMAIL OSINT =====\n\n"
-                + "Target:\n"
-                + email
-                + "\n\n"
-                + "BREACH STATUS:\n"
-                + status
-                + "\n\n"
-                + details
-                + "\n\n"
-                + "===== END OF SCAN =====";
+        // Classification prefix — keeps Main.java found/notFound counting correct
+        String prefix;
+        switch (status) {
+            case "BREACH DATA FOUND": prefix = "FOUND | "; break;
+            case "NO BREACH FOUND":   prefix = "NOT FOUND | "; break;
+            default:                  prefix = "UNKNOWN | "; break;
+        }
+
+        // Structured key:value format so the GUI can render cards instead of raw text
+        StringBuilder sb = new StringBuilder();
+        sb.append(prefix).append("EMAIL_RESULT:\n");
+        sb.append("target: ").append(email).append("\n");
+        sb.append("status: ").append(status).append("\n");
+
+        // details for breach case is now the pipe-delimited breach list
+        // details for other cases is a plain note string
+        if (!details.isBlank()) {
+            sb.append("details: ").append(details).append("\n");
+        }
+
+        return sb.toString().trim();
     }
 
     private boolean isValidEmail(String email) {

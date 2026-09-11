@@ -1,7 +1,7 @@
 package com.omenx.ui;
 
-import com.omenx.IPScanner;
-import com.omenx.IPScanner.IPResult;
+import com.omenx.osint.IPScanner;
+import com.omenx.osint.IPScanner.IPResult;
 import com.omenx.service.ScanService;
 
 import javafx.application.Platform;
@@ -14,6 +14,7 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 
 import java.awt.Desktop;
@@ -23,33 +24,24 @@ import java.time.format.DateTimeFormatter;
 
 // =========================================================
 // IP ADDRESS UI
-//
-// Provides:
-// - IP input
-// - IP intelligence
-// - Location information
-// - Network information
-// - Security / reputation information
-// - Coordinates
-// - OpenStreetMap integration
-// - ScanService integration
+// Tactical OSINT IP Geolocation & Network Intelligence
 // =========================================================
 
 public class IPAddressUI {
 
     // =========================================================
-    // COLORS
+    // COLORS (Tactical Crimson Unified)
     // =========================================================
 
-    private static final String BG = "#0A0E12";
-    private static final String PANEL = "#11161C";
-    private static final String SURFACE = "#161C23";
-    private static final String BORDER = "#1E262F";
-    private static final String TEXT = "#E8EEF4";
-    private static final String MUTED = "#6B7785";
-    private static final String BLUE = "#5B9BD5";
-    private static final String ERROR = "#E57373";
-    private static final String SUCCESS = "#81C784";
+    private static final String BG      = "#090C12";
+    private static final String PANEL   = "#111520";
+    private static final String SURFACE = "#141824";
+    private static final String BORDER  = "#1C2234";
+    private static final String TEXT    = "#F1F5F9";
+    private static final String MUTED   = "#788698";
+    private static final String RED     = "#DC2626";
+    private static final String ERROR   = "#EF4444";
+    private static final String SUCCESS = "#22C55E";
 
     // =========================================================
     // SERVICES
@@ -63,11 +55,19 @@ public class IPAddressUI {
     // UI
     // =========================================================
 
+    private AppHeader header;
     private Label statusLabel;
     private VBox resultsContainer;
 
     private TextField ipField;
     private Button scanButton;
+
+    // Stat strip labels (populated after each scan)
+    private Label statCountry;
+    private Label statIsp;
+    private Label statThreat;
+    private Label statType;
+    private Label resultsTarget;
 
     // =========================================================
     // LAST RESULT
@@ -83,7 +83,6 @@ public class IPAddressUI {
             Runnable backAction,
             ScanService scanService
     ) {
-
         this.backAction = backAction;
         this.scanService = scanService;
         this.scanner = new IPScanner();
@@ -96,224 +95,156 @@ public class IPAddressUI {
     public BorderPane createView() {
 
         BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: " + BG + ";");
 
-        root.setStyle(
-                "-fx-background-color: "
-                        + BG
-                        + ";"
+        // ── Standardized Header ──
+        header = new AppHeader(
+                "[]>",
+                "IP GEOLOCATION",
+                "Geolocate IP, resolve ASN, carrier ISP & threat reputation",
+                backAction
         );
-
-        // =====================================================
-        // HEADER
-        // =====================================================
-
-        Label title =
-                new Label(
-                        "IP Address Scanner"
-                );
-
-        title.setStyle(
-                "-fx-text-fill: "
-                        + TEXT
-                        + ";"
-                        + "-fx-font-size: 20px;"
-                        + "-fx-font-weight: bold;"
-        );
-
-        Button backButton =
-                new Button(
-                        "←  Dashboard"
-                );
-
-        backButton.setStyle(
-                "-fx-background-color: transparent;"
-                        + "-fx-text-fill: "
-                        + MUTED
-                        + ";"
-                        + "-fx-border-color: "
-                        + BORDER
-                        + ";"
-                        + "-fx-border-radius: 6px;"
-                        + "-fx-background-radius: 6px;"
-                        + "-fx-padding: 6 14;"
-                        + "-fx-cursor: hand;"
-        );
-
-        backButton.setOnAction(
-                e -> backAction.run()
-        );
-
-        HBox header =
-                new HBox(
-                        16,
-                        title,
-                        backButton
-                );
-
-        header.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
-        HBox.setHgrow(
-                title,
-                javafx.scene.layout.Priority.ALWAYS
-        );
-
-        header.setPadding(
-                new Insets(
-                        24,
-                        32,
-                        18,
-                        32
-                )
-        );
-
         root.setTop(header);
 
-        // =====================================================
-        // SUBTITLE
-        // =====================================================
-
-        Label subtitle =
-                new Label(
-                        "Investigate an IP address and retrieve available network intelligence."
-                );
-
-        subtitle.setStyle(
-                "-fx-text-fill: "
-                        + MUTED
-                        + ";"
-                        + "-fx-font-size: 12px;"
+        // ── IP Tag + Input Row (matches USERNAME/EMAIL/DOMAIN/PHONE modules) ──
+        Label ipTag = new Label("IP");
+        ipTag.setPrefHeight(44);
+        ipTag.setMinWidth(80);
+        ipTag.setAlignment(Pos.CENTER);
+        ipTag.setStyle(
+                "-fx-background-color: " + SURFACE + ";" +
+                "-fx-text-fill: " + TEXT + ";" +
+                "-fx-border-color: " + BORDER + ";" +
+                "-fx-border-radius: 6px 0 0 6px;" +
+                "-fx-background-radius: 6px 0 0 6px;" +
+                "-fx-font-family: 'Consolas', monospace;" +
+                "-fx-font-size: 11px;" +
+                "-fx-font-weight: bold;"
         );
 
-        // =====================================================
-        // INPUT
-        // =====================================================
-
-        ipField =
-                new TextField();
-
-        ipField.setPromptText(
-                "Enter IP address (e.g., 8.8.8.8)..."
-        );
-
-        ipField.setPrefHeight(42);
+        ipField = new TextField();
+        ipField.setPromptText("Enter IP address (e.g., 8.8.8.8)...");
+        ipField.setPrefHeight(44);
         ipField.getStyleClass().add("cyber-input");
+        HBox.setHgrow(ipField, Priority.ALWAYS);
 
-        scanButton =
-                new Button(
-                        "Scan IP"
-                );
-
-        scanButton.setPrefHeight(42);
+        scanButton = new Button("EXECUTE SCAN");
+        scanButton.setPrefHeight(44);
         scanButton.getStyleClass().add("btn-primary");
+        scanButton.setOnAction(e -> scanIP());
+        ipField.setOnAction(e -> scanIP());
 
-        scanButton.setOnAction(
-                e -> scanIP()
+        HBox inputBox = new HBox(0, ipTag, ipField, scanButton);
+        inputBox.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Clear / Copy action row ──
+        Button clearButton = new Button("Clear");
+        clearButton.getStyleClass().add("btn-ghost");
+        clearButton.setOnAction(e -> {
+            ipField.clear();
+            resultsContainer.getChildren().clear();
+            statCountry.setText("—");
+            statIsp.setText("—");
+            statThreat.setText("—");
+            statType.setText("—");
+            statusLabel.setText("Enter an IP address to begin investigation.");
+            statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+            header.setStatus(AppHeader.StatusType.READY, "READY");
+        });
+
+        Button copyButton = new Button("Copy Results");
+        copyButton.getStyleClass().add("btn-ghost");
+        copyButton.setOnAction(e -> {
+            if (lastResult == null) return;
+            StringBuilder sb = new StringBuilder();
+            sb.append("OMEN-X • IP Geolocation scan\n");
+            sb.append("Target: ").append(lastResult.getIp()).append("\n\n");
+            sb.append("Country: ").append(safe(lastResult.getCountry())).append("\n");
+            sb.append("ISP: ").append(safe(lastResult.getProvider())).append("\n");
+            sb.append("ASN: ").append(safe(lastResult.getAsn())).append("\n");
+            sb.append("Abuse Confidence: ").append(safe(lastResult.getAbuseConfidenceScore())).append("\n");
+            sb.append("Usage Type: ").append(safe(lastResult.getUsageType())).append("\n");
+            javafx.scene.input.ClipboardContent cc = new javafx.scene.input.ClipboardContent();
+            cc.putString(sb.toString());
+            javafx.scene.input.Clipboard.getSystemClipboard().setContent(cc);
+            statusLabel.setText("Results copied to clipboard.");
+        });
+
+        HBox actionRow = new HBox(10, clearButton, copyButton);
+        actionRow.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Status ──
+        statusLabel = new Label("Enter an IP address to begin investigation.");
+        statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+
+        // ── 4-Tile Stat Strip ──
+        statCountry = new Label("—");
+        statIsp     = new Label("—");
+        statThreat  = new Label("—");
+        statType    = new Label("—");
+
+        HBox statStrip = new HBox(12,
+                createStatTile("COUNTRY",      statCountry),
+                createStatTile("ISP / ASN",    statIsp),
+                createStatTile("THREAT LEVEL", statThreat),
+                createStatTile("IP TYPE",      statType)
+        );
+        statStrip.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Investigation Results header ──
+        Label resultsTitle = new Label("Investigation Results");
+        resultsTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+        resultsTarget = new Label("No target selected");
+        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+
+        HBox resultsHeader = new HBox(12, resultsTitle, resultsTarget);
+        resultsHeader.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Results ──
+        resultsContainer = new VBox(16);
+
+        // ── Main Content ──
+        VBox content = new VBox(
+                16,
+                inputBox,
+                actionRow,
+                statusLabel,
+                statStrip,
+                resultsHeader,
+                resultsContainer
         );
 
-        ipField.setOnAction(
-                e -> scanIP()
+        content.setPadding(new Insets(20, 28, 28, 28));
+
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(false);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.getStyleClass().add("scroll-pane");
+
+        root.setCenter(scrollPane);
+        return root;
+    }
+
+    private VBox createStatTile(String title, Label value) {
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle(
+                "-fx-text-fill: " + MUTED + ";" +
+                "-fx-font-size: 10px;" +
+                "-fx-font-weight: bold;" +
+                "-fx-letter-spacing: 1px;"
         );
-
-        HBox inputBox =
-                new HBox(
-                        10,
-                        ipField,
-                        scanButton
-                );
-
-        inputBox.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
-        HBox.setHgrow(
-                ipField,
-                javafx.scene.layout.Priority.ALWAYS
-        );
-
-        // =====================================================
-        // STATUS
-        // =====================================================
-
-        statusLabel =
-                new Label(
-                        "Enter an IP address to begin."
-                );
-
-        statusLabel.setStyle(
-                "-fx-text-fill: "
-                        + MUTED
-                        + ";"
-                        + "-fx-font-size: 12px;"
-        );
-
-        // =====================================================
-        // RESULTS
-        // =====================================================
-
-        resultsContainer =
-                new VBox(
-                        18
-                );
-
-        // =====================================================
-        // MAIN CONTENT
-        // =====================================================
-
-        VBox content =
-                new VBox(
-                        14,
-                        subtitle,
-                        inputBox,
-                        statusLabel,
-                        resultsContainer
-                );
-
-        content.setPadding(
-                new Insets(
-                        10,
-                        32,
-                        32,
-                        32
-                )
-        );
-
-        ScrollPane scrollPane =
-        new ScrollPane(
-                content
-        );
-
-scrollPane.setFitToWidth(
-        true
-);
-
-scrollPane.setFitToHeight(
-        false
-);
-
-scrollPane.setHbarPolicy(
-        ScrollPane.ScrollBarPolicy.NEVER
-);
-
-scrollPane.setVbarPolicy(
-        ScrollPane.ScrollBarPolicy.AS_NEEDED
-);
-
-scrollPane.setStyle(
-        "-fx-background: "
-                + BG
-                + ";"
-                + "-fx-background-color: "
-                + BG
-                + ";"
-);
-
-root.setCenter(
-        scrollPane
-);
-
-return root;
+        value.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        value.setWrapText(true);
+        VBox tile = new VBox(4, titleLabel, value);
+        tile.setPadding(new Insets(12, 16, 12, 16));
+        tile.setPrefWidth(170);
+        tile.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(tile, Priority.ALWAYS);
+        tile.getStyleClass().add("cyber-card");
+        return tile;
     }
 
     // =========================================================
@@ -321,127 +252,46 @@ return root;
     // =========================================================
 
     private void scanIP() {
-
-        String ip =
-                ipField
-                        .getText()
-                        .trim();
+        String ip = ipField.getText().trim();
 
         if (ip.isEmpty()) {
-
-            statusLabel.setText(
-                    "Please enter an IP address."
-            );
-
-            statusLabel.setStyle(
-                    "-fx-text-fill: "
-                            + ERROR
-                            + ";"
-            );
-
+            statusLabel.setText("Please enter an IP address.");
+            statusLabel.setStyle("-fx-text-fill: " + ERROR + ";");
+            header.setStatus(AppHeader.StatusType.WARNING, "IP REQUIRED");
             return;
         }
 
-        scanButton.setDisable(
-                true
-        );
+        scanButton.setDisable(true);
+        ipField.setDisable(true);
+        statusLabel.setText("Scanning IP address " + ip + "...");
+        statusLabel.setStyle("-fx-text-fill: " + MUTED + ";");
+        header.setStatus(AppHeader.StatusType.SCANNING, "SCANNING " + ip);
 
-        ipField.setDisable(
-                true
-        );
+        resultsContainer.getChildren().clear();
 
-        statusLabel.setText(
-                "Scanning IP address..."
-        );
+        Thread thread = new Thread(() -> {
+            try {
+                IPResult result = scanner.scan(ip);
+                Platform.runLater(() -> {
+                    lastResult = result;
+                    displayResult(result);
+                    saveScan(result);
+                    scanButton.setDisable(false);
+                    ipField.setDisable(false);
+                    header.setStatus(AppHeader.StatusType.READY, "COMPLETE");
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("Scan failed: " + ex.getMessage());
+                    statusLabel.setStyle("-fx-text-fill: " + ERROR + ";");
+                    header.setStatus(AppHeader.StatusType.ERROR, "ERROR");
+                    scanButton.setDisable(false);
+                    ipField.setDisable(false);
+                });
+            }
+        });
 
-        statusLabel.setStyle(
-                "-fx-text-fill: "
-                        + MUTED
-                        + ";"
-        );
-
-        resultsContainer
-                .getChildren()
-                .clear();
-
-        // =====================================================
-        // BACKGROUND THREAD
-        // =====================================================
-
-        Thread thread =
-                new Thread(
-                        () -> {
-
-                            try {
-
-                                IPResult result =
-                                        scanner.scan(
-                                                ip
-                                        );
-
-                                Platform.runLater(
-                                        () -> {
-
-                                            lastResult =
-                                                    result;
-
-                                            displayResult(
-                                                    result
-                                            );
-
-                                            saveScan(
-                                                    result
-                                            );
-
-                                            scanButton
-                                                    .setDisable(
-                                                            false
-                                                    );
-
-                                            ipField
-                                                    .setDisable(
-                                                            false
-                                                    );
-                                        }
-                                );
-
-                            } catch (Exception ex) {
-
-                                Platform.runLater(
-                                        () -> {
-
-                                            statusLabel
-                                                    .setText(
-                                                            "Scan failed: "
-                                                                    + ex.getMessage()
-                                                    );
-
-                                            statusLabel
-                                                    .setStyle(
-                                                            "-fx-text-fill: "
-                                                                    + ERROR
-                                                                    + ";"
-                                                    );
-
-                                            scanButton
-                                                    .setDisable(
-                                                            false
-                                                    );
-
-                                            ipField
-                                                    .setDisable(
-                                                            false
-                                                    );
-                                        }
-                                );
-                            }
-                        }
-                );
-
-        thread.setDaemon(
-                true
-        );
-
+        thread.setDaemon(true);
         thread.start();
     }
 
@@ -449,739 +299,217 @@ return root;
     // DISPLAY RESULT
     // =========================================================
 
-    private void displayResult(
-            IPResult result
-    ) {
+    private void displayResult(IPResult result) {
+        statusLabel.setText("Scan completed successfully.");
+        statusLabel.setStyle("-fx-text-fill: " + SUCCESS + ";");
 
-        statusLabel.setText(
-                "Scan completed successfully."
-        );
+        // Populate stat strip tiles
+        String country = safe(result.getCountry());
+        String cc = safe(result.getCountryCode());
+        statCountry.setText(country.equals("Unknown") ? "—" : country + " (" + cc + ")");
 
-        statusLabel.setStyle(
-                "-fx-text-fill: "
-                        + SUCCESS
-                        + ";"
-        );
+        String isp = safe(result.getProvider());
+        String asn = safe(result.getAsn());
+        statIsp.setText(isp.equals("Unknown") ? "—" : isp + (asn.equals("Unknown") ? "" : " / " + asn));
 
-        // =====================================================
+        String abuseScore = safe(result.getAbuseConfidenceScore());
+        if (abuseScore.equals("Unknown") || abuseScore.equals("0")) {
+            statThreat.setText("LOW");
+            statThreat.setStyle("-fx-text-fill: " + SUCCESS + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        } else {
+            try {
+                int score = Integer.parseInt(abuseScore.replaceAll("[^0-9]", ""));
+                if (score >= 50) {
+                    statThreat.setText("HIGH (" + score + "%)");
+                    statThreat.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+                } else if (score > 0) {
+                    statThreat.setText("MEDIUM (" + score + "%)");
+                    statThreat.setStyle("-fx-text-fill: #EAB308; -fx-font-size: 13px; -fx-font-weight: bold;");
+                } else {
+                    statThreat.setText("LOW");
+                    statThreat.setStyle("-fx-text-fill: " + SUCCESS + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+                }
+            } catch (NumberFormatException ex) {
+                statThreat.setText(abuseScore);
+            }
+        }
+
+        String usageType = safe(result.getUsageType());
+        statType.setText(usageType.equals("Unknown") ? "—" : usageType);
+
+        // Update results target label
+        resultsTarget.setText(safe(result.getIp()));
+        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+
         // LOCATION
-        // =====================================================
+        Label locationTitle = sectionTitle("LOCATION METADATA");
+        GridPane locationGrid = createGrid();
+        addRow(locationGrid, 0, "City", result.getCity());
+        addRow(locationGrid, 1, "Region", safe(result.getRegion()) + " (" + safe(result.getRegionCode()) + ")");
+        addRow(locationGrid, 2, "Postal code", result.getPostalCode());
+        addRow(locationGrid, 3, "Country", safe(result.getCountry()) + " (" + safe(result.getCountryCode()) + ")");
+        addRow(locationGrid, 4, "Continent", safe(result.getContinent()) + " (" + safe(result.getContinentCode()) + ")");
+        addRow(locationGrid, 5, "Coordinates", result.getCoordinates());
+        addRow(locationGrid, 6, "Timezone", result.getTimezone());
+        VBox locationPanel = createPanel(locationTitle, locationGrid);
 
-        Label locationTitle =
-                sectionTitle(
-                        "LOCATION"
-                );
-
-        GridPane locationGrid =
-                createGrid();
-
-        addRow(
-                locationGrid,
-                0,
-                "City",
-                result.getCity()
-        );
-
-        addRow(
-                locationGrid,
-                1,
-                "Region",
-                safe(
-                        result.getRegion()
-                )
-                        + " ("
-                        + safe(
-                        result.getRegionCode()
-                )
-                        + ")"
-        );
-
-        addRow(
-                locationGrid,
-                2,
-                "Postal code",
-                result.getPostalCode()
-        );
-
-        addRow(
-                locationGrid,
-                3,
-                "Country",
-                safe(
-                        result.getCountry()
-                )
-                        + " ("
-                        + safe(
-                        result.getCountryCode()
-                )
-                        + ")"
-        );
-
-        addRow(
-                locationGrid,
-                4,
-                "Continent",
-                safe(
-                        result.getContinent()
-                )
-                        + " ("
-                        + safe(
-                        result.getContinentCode()
-                )
-                        + ")"
-        );
-
-        addRow(
-                locationGrid,
-                5,
-                "Coordinates",
-                result.getCoordinates()
-        );
-
-        addRow(
-                locationGrid,
-                6,
-                "Timezone",
-                result.getTimezone()
-        );
-
-        VBox locationPanel =
-                createPanel(
-                        locationTitle,
-                        locationGrid
-                );
-
-        // =====================================================
         // NETWORK
-        // =====================================================
+        Label networkTitle = sectionTitle("NETWORK & ROUTING INTEL");
+        GridPane networkGrid = createGrid();
+        addRow(networkGrid, 0, "IP address", result.getIp());
+        addRow(networkGrid, 1, "IP version", result.getIpVersion());
+        addRow(networkGrid, 2, "Public IP", result.getPublicIp());
+        addRow(networkGrid, 3, "Hostname", result.getHostname());
+        addRow(networkGrid, 4, "ISP / Provider", result.getProvider());
+        addRow(networkGrid, 5, "Organization", result.getOrganization());
+        addRow(networkGrid, 6, "ASN", result.getAsn());
+        addRow(networkGrid, 7, "Domain", result.getAbuseDomain());
+        addRow(networkGrid, 8, "Usage Type", result.getUsageType());
+        addRow(networkGrid, 9, "Associated Hostnames", result.getAbuseHostnames());
+        VBox networkPanel = createPanel(networkTitle, networkGrid);
 
-        Label networkTitle =
-                sectionTitle(
-                        "NETWORK"
-                );
-
-        GridPane networkGrid =
-                createGrid();
-
-        addRow(
-                networkGrid,
-                0,
-                "IP address",
-                result.getIp()
-        );
-
-        addRow(
-                networkGrid,
-                1,
-                "IP version",
-                result.getIpVersion()
-        );
-
-        addRow(
-                networkGrid,
-                2,
-                "Public IP",
-                result.getPublicIp()
-        );
-
-        addRow(
-                networkGrid,
-                3,
-                "Hostname",
-                result.getHostname()
-        );
-
-        addRow(
-                networkGrid,
-                4,
-                "ISP / Provider",
-                result.getProvider()
-        );
-
-        addRow(
-                networkGrid,
-                5,
-                "Organization",
-                result.getOrganization()
-        );
-
-        addRow(
-                networkGrid,
-                6,
-                "ASN",
-                result.getAsn()
-        );
-
-        addRow(
-                networkGrid,
-                7,
-                "Domain",
-                result.getAbuseDomain()
-        );
-
-        addRow(
-                networkGrid,
-                8,
-                "Usage Type",
-                result.getUsageType()
-        );
-
-        addRow(
-                networkGrid,
-                9,
-                "Associated Hostnames",
-                result.getAbuseHostnames()
-        );
-
-        VBox networkPanel =
-                createPanel(
-                        networkTitle,
-                        networkGrid
-                );
-
-        // =====================================================
-        // SECURITY / REPUTATION
-        // =====================================================
-
-        Label securityTitle =
-                sectionTitle(
-                        "SECURITY / REPUTATION"
-                );
-
-        GridPane securityGrid =
-                createGrid();
-
-        addRow(
-                securityGrid,
-                0,
-                "Abuse Confidence",
-                result.getAbuseConfidenceScore()
-        );
-
-        addRow(
-                securityGrid,
-                1,
-                "Total Reports",
-                result.getTotalReports()
-        );
-
-        addRow(
-                securityGrid,
-                2,
-                "Distinct Reporters",
-                result.getDistinctReporters()
-        );
-
-        addRow(
-                securityGrid,
-                3,
-                "Tor",
-                result.getTor()
-        );
-
-        addRow(
-                securityGrid,
-                4,
-                "Whitelisted",
-                result.getWhitelisted()
-        );
-
-        addRow(
-                securityGrid,
-                5,
-                "Last Reported",
-                result.getLastReportedAt()
-        );
-
-        addRow(
-                securityGrid,
-                6,
-                "Security Status",
-                result.getAbuseStatus()
-        );
-
-        VBox securityPanel =
-                createPanel(
-                        securityTitle,
-                        securityGrid
-                );
-
-        // =====================================================
-        // MAP BUTTON
-        // =====================================================
-
-        Button mapButton =
-                new Button(
-                        "📍  Open on Map"
-                );
-
-        mapButton.setPrefHeight(
-                40
-        );
-
-        mapButton.setStyle(
-                "-fx-background-color: "
-                        + SURFACE
-                        + ";"
-                        + "-fx-text-fill: "
-                        + TEXT
-                        + ";"
-                        + "-fx-border-color: "
-                        + BORDER
-                        + ";"
-                        + "-fx-border-radius: 6px;"
-                        + "-fx-background-radius: 6px;"
-                        + "-fx-padding: 0 18;"
-                        + "-fx-cursor: hand;"
-        );
-
-        mapButton.setOnAction(
-                e -> openMap(result)
-        );
-
-        HBox mapBox =
-                new HBox(
-                        mapButton
-                );
-
-        mapBox.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
-        // =====================================================
-        // ADD RESULTS
-        // =====================================================
-
-        resultsContainer
-                .getChildren()
-                .addAll(
-                        locationPanel,
-                        networkPanel,
-                        securityPanel,
-                        mapBox
-                );
-    }
-
-    // =========================================================
-    // SAVE SCAN
-    // =========================================================
-
-    private void saveScan(
-            IPResult result
-    ) {
-
-        int findings =
-                countFindings(
-                        result
-                );
-
-        scanService.saveScan(
-
-                "IP Address",
-
-                result.getIp(),
-
-                findings,
-
-                LocalTime.now()
-                        .format(
-                                DateTimeFormatter.ofPattern(
-                                        "HH:mm"
-                                )
-                        )
-        );
-    }
-
-    // =========================================================
-    // COUNT FINDINGS
-    // =========================================================
-
-    private int countFindings(
-            IPResult result
-    ) {
-
-        int count = 0;
-
-        // -----------------------------------------------------
-        // LOCATION
-        // -----------------------------------------------------
-
-        if (!isUnknown(
-                result.getCity()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getRegion()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getPostalCode()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getCountry()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getCoordinates()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getTimezone()
-        ))
-            count++;
-
-        // -----------------------------------------------------
-        // NETWORK
-        // -----------------------------------------------------
-
-        if (!isUnknown(
-                result.getIp()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getIpVersion()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getPublicIp()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getHostname()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getProvider()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getOrganization()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getAsn()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getAbuseDomain()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getUsageType()
-        ))
-            count++;
-
-        if (!isUnknown(
-                result.getAbuseHostnames()
-        ))
-            count++;
-
-        // -----------------------------------------------------
         // SECURITY
-        // -----------------------------------------------------
+        Label securityTitle = sectionTitle("SECURITY & REPUTATION");
+        GridPane securityGrid = createGrid();
+        addRow(securityGrid, 0, "Abuse Confidence", result.getAbuseConfidenceScore());
+        addRow(securityGrid, 1, "Total Reports", result.getTotalReports());
+        addRow(securityGrid, 2, "Distinct Reporters", result.getDistinctReporters());
+        addRow(securityGrid, 3, "Tor Exit Node", result.getTor());
+        addRow(securityGrid, 4, "Whitelisted", result.getWhitelisted());
+        addRow(securityGrid, 5, "Last Reported", result.getLastReportedAt());
+        addRow(securityGrid, 6, "Security Status", result.getAbuseStatus());
+        VBox securityPanel = createPanel(securityTitle, securityGrid);
 
-        if (!isUnknown(
-                result.getAbuseConfidenceScore()
-        ))
-            count++;
+        // MAP BUTTON
+        Button mapButton = new Button("📍  Open on Interactive Map");
+        mapButton.setPrefHeight(40);
+        mapButton.getStyleClass().add("btn-accent");
+        mapButton.setOnAction(e -> openMap(result));
 
-        if (!isUnknown(
-                result.getTotalReports()
-        ))
-            count++;
+        HBox mapBox = new HBox(mapButton);
+        mapBox.setAlignment(Pos.CENTER_LEFT);
 
-        if (!isUnknown(
-                result.getDistinctReporters()
-        ))
-            count++;
+        resultsContainer.getChildren().addAll(
+                locationPanel,
+                networkPanel,
+                securityPanel,
+                mapBox
+        );
+    }
 
-        if (!isUnknown(
-                result.getTor()
-        ))
-            count++;
+    private void saveScan(IPResult result) {
+        int findings = countFindings(result);
+        scanService.saveScan(
+                "IP Address",
+                result.getIp(),
+                findings,
+                LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
+        );
+    }
 
-        if (!isUnknown(
-                result.getWhitelisted()
-        ))
-            count++;
+    private int countFindings(IPResult result) {
+        int count = 0;
+        if (!isUnknown(result.getCity())) count++;
+        if (!isUnknown(result.getRegion())) count++;
+        if (!isUnknown(result.getPostalCode())) count++;
+        if (!isUnknown(result.getCountry())) count++;
+        if (!isUnknown(result.getCoordinates())) count++;
+        if (!isUnknown(result.getTimezone())) count++;
 
-        if (!isUnknown(
-                result.getLastReportedAt()
-        ))
-            count++;
+        if (!isUnknown(result.getIp())) count++;
+        if (!isUnknown(result.getIpVersion())) count++;
+        if (!isUnknown(result.getPublicIp())) count++;
+        if (!isUnknown(result.getHostname())) count++;
+        if (!isUnknown(result.getProvider())) count++;
+        if (!isUnknown(result.getOrganization())) count++;
+        if (!isUnknown(result.getAsn())) count++;
+        if (!isUnknown(result.getAbuseDomain())) count++;
+        if (!isUnknown(result.getUsageType())) count++;
+        if (!isUnknown(result.getAbuseHostnames())) count++;
+
+        if (!isUnknown(result.getAbuseConfidenceScore())) count++;
+        if (!isUnknown(result.getTotalReports())) count++;
+        if (!isUnknown(result.getDistinctReporters())) count++;
+        if (!isUnknown(result.getTor())) count++;
+        if (!isUnknown(result.getWhitelisted())) count++;
+        if (!isUnknown(result.getLastReportedAt())) count++;
 
         return count;
     }
 
-    // =========================================================
-    // UNKNOWN CHECK
-    // =========================================================
-
-    private boolean isUnknown(
-            String value
-    ) {
-
+    private boolean isUnknown(String value) {
         return value == null
                 || value.isBlank()
-                || value.equalsIgnoreCase(
-                        "Unknown / Unknown"
-                )
-                || value.equalsIgnoreCase(
-                        "Unknown"
-                )
-                || value.equalsIgnoreCase(
-                        "Not available"
-                )
-                || value.equalsIgnoreCase(
-                        "Not checked"
-                )
-                || value.equalsIgnoreCase(
-                        "None found"
-                );
+                || value.equalsIgnoreCase("Unknown / Unknown")
+                || value.equalsIgnoreCase("Unknown")
+                || value.equalsIgnoreCase("Not available")
+                || value.equalsIgnoreCase("Not checked")
+                || value.equalsIgnoreCase("None found");
     }
 
-    // =========================================================
-    // SAFE TEXT
-    // =========================================================
-
-    private String safe(
-            String value
-    ) {
-
-        if (value == null ||
-                value.isBlank()) {
-
-            return "Unknown";
-        }
-
-        return value;
+    private String safe(String value) {
+        return (value == null || value.isBlank()) ? "Unknown" : value;
     }
 
-    // =========================================================
-    // OPEN MAP
-    // =========================================================
-
-    private void openMap(
-            IPResult result
-    ) {
-
+    private void openMap(IPResult result) {
         try {
+            String latitude = result.getLatitude();
+            String longitude = result.getLongitude();
 
-            String latitude =
-                    result.getLatitude();
-
-            String longitude =
-                    result.getLongitude();
-
-            if (isUnknown(latitude)
-                    || isUnknown(longitude)) {
-
-                statusLabel.setText(
-                        "Coordinates are not available."
-                );
-
-                statusLabel.setStyle(
-                        "-fx-text-fill: "
-                                + ERROR
-                                + ";"
-                );
-
+            if (isUnknown(latitude) || isUnknown(longitude)) {
+                statusLabel.setText("Coordinates are not available.");
+                statusLabel.setStyle("-fx-text-fill: " + ERROR + ";");
                 return;
             }
 
-            String mapURL =
-                    "https://www.openstreetmap.org/"
-                            + "?mlat="
-                            + latitude
-                            + "&mlon="
-                            + longitude
-                            + "#map=12/"
-                            + latitude
-                            + "/"
-                            + longitude;
+            String mapURL = "https://www.openstreetmap.org/?mlat=" + latitude + "&mlon=" + longitude + "#map=12/" + latitude + "/" + longitude;
 
             if (Desktop.isDesktopSupported()) {
-
-                Desktop.getDesktop()
-                        .browse(
-                                new URI(
-                                        mapURL
-                                )
-                        );
-
+                Desktop.getDesktop().browse(new URI(mapURL));
             } else {
-
-                statusLabel.setText(
-                        "Unable to open browser."
-                );
-
-                statusLabel.setStyle(
-                        "-fx-text-fill: "
-                                + ERROR
-                                + ";"
-                );
+                statusLabel.setText("Unable to open browser.");
+                statusLabel.setStyle("-fx-text-fill: " + ERROR + ";");
             }
-
         } catch (Exception ex) {
-
-            statusLabel.setText(
-                    "Could not open map: "
-                            + ex.getMessage()
-            );
-
-            statusLabel.setStyle(
-                    "-fx-text-fill: "
-                            + ERROR
-                            + ";"
-            );
+            statusLabel.setText("Could not open map: " + ex.getMessage());
+            statusLabel.setStyle("-fx-text-fill: " + ERROR + ";");
         }
     }
 
-    // =========================================================
-    // CREATE GRID
-    // =========================================================
-
     private GridPane createGrid() {
-
-        GridPane grid =
-                new GridPane();
-
-        grid.setHgap(
-                30
-        );
-
-        grid.setVgap(
-                12
-        );
-
+        GridPane grid = new GridPane();
+        grid.setHgap(30);
+        grid.setVgap(12);
         return grid;
     }
 
-    // =========================================================
-    // ADD ROW
-    // =========================================================
+    private void addRow(GridPane grid, int row, String key, String value) {
+        Label keyLabel = new Label(key);
+        keyLabel.setMinWidth(180);
+        keyLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px; -fx-font-weight: bold;");
 
-    private void addRow(
-            GridPane grid,
-            int row,
-            String key,
-            String value
-    ) {
+        Label valueLabel = new Label(safe(value));
+        valueLabel.setWrapText(true);
+        valueLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
 
-        Label keyLabel =
-                new Label(
-                        key
-                );
-
-        keyLabel.setMinWidth(
-                180
-        );
-
-        keyLabel.setStyle(
-                "-fx-text-fill: "
-                        + MUTED
-                        + ";"
-                        + "-fx-font-size: 12px;"
-        );
-
-        Label valueLabel =
-                new Label(
-                        safe(value)
-                );
-
-        valueLabel.setWrapText(
-                true
-        );
-
-        valueLabel.setStyle(
-                "-fx-text-fill: "
-                        + TEXT
-                        + ";"
-                        + "-fx-font-size: 12px;"
-        );
-
-        grid.add(
-                keyLabel,
-                0,
-                row
-        );
-
-        grid.add(
-                valueLabel,
-                1,
-                row
-        );
+        grid.add(keyLabel, 0, row);
+        grid.add(valueLabel, 1, row);
     }
 
-    // =========================================================
-    // SECTION TITLE
-    // =========================================================
-
-    private Label sectionTitle(
-            String text
-    ) {
-
-        Label label =
-                new Label(
-                        text
-                );
-
-        label.setStyle(
-                "-fx-text-fill: "
-                        + TEXT
-                        + ";"
-                        + "-fx-font-size: 13px;"
-                        + "-fx-font-weight: bold;"
-        );
-
+    private Label sectionTitle(String text) {
+        Label label = new Label(text);
+        label.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
         return label;
     }
 
-    // =========================================================
-    // PANEL
-    // =========================================================
-
-    private VBox createPanel(
-            javafx.scene.Node... nodes
-    ) {
-
-        VBox panel =
-                new VBox(
-                        14,
-                        nodes
-                );
-
-        panel.setPadding(
-                new Insets(
-                        18
-                )
-        );
-
+    private VBox createPanel(javafx.scene.Node... nodes) {
+        VBox panel = new VBox(14, nodes);
+        panel.setPadding(new Insets(18));
         panel.getStyleClass().add("cyber-card");
-
         return panel;
     }
 
-    // =========================================================
-    // SHUTDOWN
-    // =========================================================
-
     public void shutdown() {
-
         scanner.shutdown();
     }
 }

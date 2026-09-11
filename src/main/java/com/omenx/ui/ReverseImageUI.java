@@ -26,51 +26,36 @@ import java.util.concurrent.Executors;
 
 // =========================================================
 // REVERSE IMAGE UI
-//
-// Select image
-//      ↓
-// ReverseImageScanner
-//      ↓
-// Internet search
-//      ↓
-// Results displayed inside OMEN-X
+// Tactical Visual Reconnaissance & Reverse Image Intelligence
 // =========================================================
 
 public class ReverseImageUI {
 
     // =========================================================
-    // COLORS
+    // COLORS (Tactical Crimson Unified)
     // =========================================================
 
-    private static final String BG = "#0A0E12";
-    private static final String PANEL = "#11161C";
-    private static final String SURFACE = "#161C23";
-    private static final String BORDER = "#1E262F";
-    private static final String TEXT = "#E8EEF4";
-    private static final String MUTED = "#6B7785";
-    private static final String PURPLE = "#8B5CF6";
-    private static final String GREEN = "#4ADE80";
-    private static final String RED = "#F87171";
+    private static final String BG      = "#090C12";
+    private static final String PANEL   = "#111520";
+    private static final String SURFACE = "#141824";
+    private static final String BORDER  = "#1C2234";
+    private static final String TEXT    = "#F1F5F9";
+    private static final String MUTED   = "#788698";
+    private static final String GREEN   = "#22C55E";
+    private static final String RED     = "#DC2626";
 
     // =========================================================
-    // ACTIONS
+    // ACTIONS & SERVICES
     // =========================================================
 
     private final Runnable backAction;
     private final ScanService scanService;
-
-    // =========================================================
-    // SCANNER
-    // =========================================================
-
     private final ReverseImageScanner scanner;
-
-    // =========================================================
-    // EXECUTOR
-    // =========================================================
 
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
+
+    private AppHeader header;
 
     // =========================================================
     // CONSTRUCTOR
@@ -80,12 +65,9 @@ public class ReverseImageUI {
             Runnable backAction,
             ScanService scanService
     ) {
-
         this.backAction = backAction;
         this.scanService = scanService;
-
-        this.scanner =
-                new ReverseImageScanner();
+        this.scanner = new ReverseImageScanner();
     }
 
     // =========================================================
@@ -94,425 +76,145 @@ public class ReverseImageUI {
 
     public BorderPane createView() {
 
-        BorderPane root =
-                new BorderPane();
+        BorderPane root = new BorderPane();
+        root.setStyle("-fx-background-color: " + BG + ";");
 
-        root.setStyle(
-                "-fx-background-color: " + BG + ";"
+        // ── Standardized Header ──
+        header = new AppHeader(
+                ">>",
+                "REVERSE IMAGE",
+                "Identify identical and visually matching imagery across search engines",
+                backAction
         );
-
-        // =====================================================
-        // HEADER
-        // =====================================================
-
-        Label title =
-                new Label(
-                        "Reverse Image Search"
-                );
-
-        title.setStyle(
-                "-fx-text-fill: " + TEXT +
-                "; -fx-font-size: 20px;" +
-                " -fx-font-weight: bold;"
-        );
-
-        Button backButton =
-                new Button(
-                        "←  Dashboard"
-                );
-
-        backButton.setStyle(
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 6px;" +
-                "-fx-background-radius: 6px;" +
-                "-fx-padding: 7 14;" +
-                "-fx-cursor: hand;"
-        );
-
-        backButton.setOnAction(
-                e -> backAction.run()
-        );
-
-        HBox header =
-                new HBox(
-                        16,
-                        title,
-                        backButton
-                );
-
-        header.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
-        header.setPadding(
-                new Insets(
-                        24,
-                        32,
-                        18,
-                        32
-                )
-        );
-
         root.setTop(header);
 
-        // =====================================================
-        // SUBTITLE
-        // =====================================================
-
-        Label subtitle =
-                new Label(
-                        "Search the Internet for visually similar images."
-                );
-
-        subtitle.setStyle(
-                "-fx-text-fill: " + MUTED +
-                "; -fx-font-size: 12px;"
-        );
-
-        // =====================================================
-        // SELECTED IMAGE
-        // =====================================================
-
-        ImageView preview =
-                new ImageView();
-
+        // ── Selected Image Preview Box ──
+        ImageView preview = new ImageView();
         preview.setFitWidth(220);
         preview.setFitHeight(160);
         preview.setPreserveRatio(true);
 
-        Label fileName =
-                new Label(
-                        "No image selected"
-                );
+        Label fileName = new Label("No image selected");
+        fileName.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
 
-        fileName.setStyle(
-                "-fx-text-fill: " + MUTED +
-                "; -fx-font-size: 12px;"
-        );
+        VBox imagePreview = new VBox(10, preview, fileName);
+        imagePreview.setAlignment(Pos.CENTER);
+        imagePreview.setPadding(new Insets(20));
+        imagePreview.setMinHeight(240);
+        imagePreview.getStyleClass().add("drop-zone");
 
-        VBox imagePreview =
-                new VBox(
-                        10,
-                        preview,
-                        fileName
-                );
-
-        imagePreview.setAlignment(
-                Pos.CENTER
-        );
-
-        imagePreview.setPadding(
-                new Insets(20)
-        );
-
-        imagePreview.setMinHeight(210);
-
-        imagePreview.setStyle(
-                "-fx-background-color: " + PANEL + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 10px;" +
-                "-fx-background-radius: 10px;"
-        );
-
-        // =====================================================
-        // BUTTONS
-        // =====================================================
-
-        Button selectButton =
-                new Button(
-                        "Choose Image File…"
-                );
-
+        // ── Buttons ──
+        Button selectButton = new Button("Choose Image File…");
         selectButton.setPrefHeight(42);
         selectButton.getStyleClass().add("btn-ghost");
 
-        Button searchButton =
-                new Button(
-                        "Search Internet"
-                );
-
+        Button searchButton = new Button("EXECUTE SEARCH");
         searchButton.setPrefHeight(42);
         searchButton.setDisable(true);
         searchButton.getStyleClass().add("btn-primary");
 
-        HBox buttons =
-                new HBox(
-                        12,
-                        selectButton,
-                        searchButton
-                );
+        HBox buttons = new HBox(12, selectButton, searchButton);
+        buttons.setAlignment(Pos.CENTER_LEFT);
 
-        buttons.setAlignment(
-                Pos.CENTER_LEFT
-        );
+        // ── Status ──
+        Label status = new Label("Ready — select an image file to begin.");
+        status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
 
-        // =====================================================
-        // STATUS
-        // =====================================================
+        // ── Results Header ──
+        Label resultsTitle = new Label("Search Results");
+        resultsTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
 
-        Label status =
-                new Label(
-                        "Ready"
-                );
+        Label resultCount = new Label("0 matches");
+        resultCount.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
 
-        status.setStyle(
-                "-fx-text-fill: " + MUTED +
-                "; -fx-font-size: 12px;"
-        );
+        HBox resultsHeader = new HBox(12, resultsTitle, resultCount);
+        resultsHeader.setAlignment(Pos.CENTER_LEFT);
 
-        // =====================================================
-        // RESULTS TITLE
-        // =====================================================
+        // ── Results Container ──
+        VBox results = new VBox(12);
+        results.setPadding(new Insets(4));
 
-        Label resultsTitle =
-                new Label(
-                        "Search Results"
-                );
-
-        resultsTitle.setStyle(
-                "-fx-text-fill: " + TEXT +
-                "; -fx-font-size: 15px;" +
-                " -fx-font-weight: bold;"
-        );
-
-        Label resultCount =
-                new Label(
-                        "0 matches"
-                );
-
-        resultCount.setStyle(
-                "-fx-text-fill: " + MUTED +
-                "; -fx-font-size: 12px;"
-        );
-
-        HBox resultsHeader =
-                new HBox(
-                        12,
-                        resultsTitle,
-                        resultCount
-                );
-
-        resultsHeader.setAlignment(
-                Pos.CENTER_LEFT
-        );
-
-        // =====================================================
-        // RESULTS CONTAINER
-        // =====================================================
-
-        VBox results =
-                new VBox(12);
-
-        results.setPadding(
-                new Insets(4)
-        );
-
-        // =====================================================
-        // SCROLL PANE
-        // =====================================================
-
-        ScrollPane scrollPane =
-                new ScrollPane(
-                        results
-                );
-
+        ScrollPane scrollPane = new ScrollPane(results);
         scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.getStyleClass().add("scroll-pane");
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        scrollPane.setHbarPolicy(
-                ScrollPane.ScrollBarPolicy.NEVER
-        );
-
-        scrollPane.setStyle(
-                "-fx-background: " + BG + ";" +
-                "-fx-background-color: " + BG + ";"
-        );
-
-        VBox.setVgrow(
-                scrollPane,
-                Priority.ALWAYS
-        );
-
-        // =====================================================
-        // SELECT IMAGE
-        // =====================================================
-
-        final File[] selectedImage =
-                new File[1];
+        final File[] selectedImage = new File[1];
 
         selectButton.setOnAction(e -> {
-
-            FileChooser chooser =
-                    new FileChooser();
-
-            chooser.setTitle(
-                    "Select Image"
-            );
-
+            FileChooser chooser = new FileChooser();
+            chooser.setTitle("Select Image for Reverse Search");
             chooser.getExtensionFilters().add(
                     new FileChooser.ExtensionFilter(
                             "Image Files",
-                            "*.jpg",
-                            "*.jpeg",
-                            "*.png",
-                            "*.gif",
-                            "*.webp",
-                            "*.bmp"
+                            "*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.bmp"
                     )
             );
 
-            File file =
-                    chooser.showOpenDialog(
-                            root.getScene()
-                                    .getWindow()
-                    );
-
-            if (file == null) {
-                return;
-            }
+            File file = chooser.showOpenDialog(root.getScene().getWindow());
+            if (file == null) return;
 
             selectedImage[0] = file;
 
-            // -------------------------------------------------
-            // PREVIEW
-            // -------------------------------------------------
-
             try {
-
-                Image image =
-                        new Image(
-                                file.toURI()
-                                        .toString(),
-                                220,
-                                160,
-                                true,
-                                true
-                        );
-
+                Image image = new Image(file.toURI().toString(), 220, 160, true, true);
                 preview.setImage(image);
-
             } catch (Exception ex) {
-
                 preview.setImage(null);
             }
 
-            fileName.setText(
-                    file.getName()
-            );
-
-            status.setText(
-                    "Image selected — ready to search"
-            );
-
-            status.setStyle(
-                    "-fx-text-fill: " + GREEN +
-                    "; -fx-font-size: 12px;"
-            );
-
+            fileName.setText(file.getName());
+            status.setText("Image selected — ready to search");
+            status.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px;");
+            header.setStatus(AppHeader.StatusType.READY, "IMAGE LOADED");
             searchButton.setDisable(false);
-
             results.getChildren().clear();
-
-            resultCount.setText(
-                    "0 matches"
-            );
+            resultCount.setText("0 matches");
         });
 
-        // =====================================================
-        // SEARCH
-        // =====================================================
-
+        // ── Search Action ──
         searchButton.setOnAction(e -> {
-
-            File file =
-                    selectedImage[0];
-
+            File file = selectedImage[0];
             if (file == null) {
-
-                status.setText(
-                        "Please select an image first."
-                );
-
+                status.setText("Please select an image first.");
                 return;
             }
 
-            // -------------------------------------------------
-            // DISABLE BUTTON
-            // -------------------------------------------------
-
             searchButton.setDisable(true);
             selectButton.setDisable(true);
-
-            status.setText(
-                    "Uploading image and searching the Internet..."
-            );
-
-            status.setStyle(
-                    "-fx-text-fill: " + PURPLE +
-                    "; -fx-font-size: 12px;"
-            );
+            status.setText("Uploading image and searching the Internet...");
+            status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+            header.setStatus(AppHeader.StatusType.SCANNING, "SEARCHING ENGINES");
 
             results.getChildren().clear();
-
-            resultCount.setText(
-                    "Searching..."
-            );
-
-            // -------------------------------------------------
-            // BACKGROUND SEARCH
-            // -------------------------------------------------
+            resultCount.setText("Searching...");
 
             executor.submit(() -> {
-
                 try {
-
-                    List<ReverseImageScanner.Match>
-                            matches =
-                            scanner.scan(file);
+                    List<ReverseImageScanner.Match> matches = scanner.scan(file);
 
                     Platform.runLater(() -> {
-
-                        renderResults(
-                                results,
-                                resultCount,
-                                status,
-                                matches
+                        renderResults(results, resultCount, status, matches);
+                        scanService.saveScan(
+                                "Reverse Image",
+                                file.getName(),
+                                matches.size(),
+                                java.time.LocalTime.now().format(
+                                        java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                                )
                         );
-                        // Save reverse-image scan
-    scanService.saveScan(
-            "Reverse Image",
-            file.getName(),
-            matches.size(),
-            java.time.LocalTime.now()
-                    .format(
-                            java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-                    )
-    );
                         searchButton.setDisable(false);
                         selectButton.setDisable(false);
+                        header.setStatus(AppHeader.StatusType.READY, "COMPLETE");
                     });
 
                 } catch (Exception ex) {
-
                     Platform.runLater(() -> {
-
-                        status.setText(
-                                "Search failed: "
-                                        + cleanError(
-                                                ex.getMessage()
-                                        )
-                        );
-
-                        status.setStyle(
-                                "-fx-text-fill: " + RED +
-                                "; -fx-font-size: 12px;"
-                        );
-
-                        resultCount.setText(
-                                "Search failed"
-                        );
-
+                        status.setText("Search failed: " + cleanError(ex.getMessage()));
+                        status.setStyle("-fx-text-fill: " + RED + "; -fx-font-size: 12px;");
+                        resultCount.setText("Search failed");
+                        header.setStatus(AppHeader.StatusType.ERROR, "FAILED");
                         searchButton.setDisable(false);
                         selectButton.setDisable(false);
                     });
@@ -520,58 +222,26 @@ public class ReverseImageUI {
             });
         });
 
-        // =====================================================
-        // IMAGE PANEL
-        // =====================================================
+        VBox imagePanel = new VBox(
+                14,
+                imagePreview,
+                buttons,
+                status
+        );
+        imagePanel.setPadding(new Insets(18));
+        imagePanel.getStyleClass().add("cyber-card");
 
-        VBox imagePanel =
-                new VBox(
-                        15,
-                        imagePreview,
-                        buttons,
-                        status
-                );
-
-        imagePanel.setPadding(
-                new Insets(18)
+        VBox content = new VBox(
+                16,
+                imagePanel,
+                resultsHeader,
+                scrollPane
         );
 
-        imagePanel.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 10px;" +
-                "-fx-background-radius: 10px;"
-        );
-
-        // =====================================================
-        // MAIN CONTENT
-        // =====================================================
-
-        VBox content =
-                new VBox(
-                        16,
-                        subtitle,
-                        imagePanel,
-                        resultsHeader,
-                        scrollPane
-                );
-
-        content.setPadding(
-                new Insets(
-                        10,
-                        32,
-                        32,
-                        32
-                )
-        );
-
-        VBox.setVgrow(
-                scrollPane,
-                Priority.ALWAYS
-        );
+        content.setPadding(new Insets(20, 28, 28, 28));
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
         root.setCenter(content);
-
         return root;
     }
 
@@ -585,74 +255,27 @@ public class ReverseImageUI {
             Label status,
             List<ReverseImageScanner.Match> matches
     ) {
-
         results.getChildren().clear();
 
-        if (matches == null ||
-                matches.isEmpty()) {
+        if (matches == null || matches.isEmpty()) {
+            resultCount.setText("0 matches");
+            status.setText("Search completed — no visually similar results found.");
+            status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
 
-            resultCount.setText(
-                    "0 matches"
-            );
-
-            status.setText(
-                    "Search completed — no results found."
-            );
-
-            status.setStyle(
-                    "-fx-text-fill: " + MUTED +
-                    "; -fx-font-size: 12px;"
-            );
-
-            Label empty =
-                    new Label(
-                            "No matching images were returned."
-                    );
-
-            empty.setStyle(
-                    "-fx-text-fill: " + MUTED +
-                    "; -fx-font-size: 13px;"
-            );
-
-            empty.setPadding(
-                    new Insets(25)
-            );
-
-            results.getChildren().add(
-                    empty
-            );
-
+            Label empty = new Label("No matching images were returned.");
+            empty.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
+            empty.setPadding(new Insets(25));
+            results.getChildren().add(empty);
             return;
         }
 
-        resultCount.setText(
-                matches.size()
-                        + " matches"
-        );
-
-        status.setText(
-                "Search completed successfully."
-        );
-
-        status.setStyle(
-                "-fx-text-fill: " + GREEN +
-                "; -fx-font-size: 12px;"
-        );
+        resultCount.setText(matches.size() + " matches");
+        status.setText("Search completed successfully.");
+        status.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px;");
 
         int rank = 1;
-
-        for (
-                ReverseImageScanner.Match match
-                : matches
-        ) {
-
-            results.getChildren().add(
-                    createResultCard(
-                            rank,
-                            match
-                    )
-            );
-
+        for (ReverseImageScanner.Match match : matches) {
+            results.getChildren().add(createResultCard(rank, match));
             rank++;
         }
     }
@@ -661,289 +284,94 @@ public class ReverseImageUI {
     // RESULT CARD
     // =========================================================
 
-    private HBox createResultCard(
-            int rank,
-            ReverseImageScanner.Match match
-    ) {
-
-        // =====================================================
-        // THUMBNAIL
-        // =====================================================
-
-        ImageView imageView =
-                new ImageView();
-
+    private HBox createResultCard(int rank, ReverseImageScanner.Match match) {
+        ImageView imageView = new ImageView();
         imageView.setFitWidth(130);
         imageView.setFitHeight(100);
         imageView.setPreserveRatio(true);
 
-        String imageUrl =
-                match.getThumbnail();
-
-        if (imageUrl == null ||
-                imageUrl.isBlank()) {
-
-            imageUrl =
-                    match.getImage();
+        String imageUrl = match.getThumbnail();
+        if (imageUrl == null || imageUrl.isBlank()) {
+            imageUrl = match.getImage();
         }
 
-        if (imageUrl != null &&
-                !imageUrl.isBlank()) {
-
+        if (imageUrl != null && !imageUrl.isBlank()) {
             try {
-
-                imageView.setImage(
-                        new Image(
-                                imageUrl,
-                                130,
-                                100,
-                                true,
-                                true,
-                                true
-                        )
-                );
-
-            } catch (Exception ignored) {
-            }
+                imageView.setImage(new Image(imageUrl, 130, 100, true, true, true));
+            } catch (Exception ignored) {}
         }
 
-        VBox imageBox =
-                new VBox(
-                        imageView
-                );
-
-        imageBox.setAlignment(
-                Pos.CENTER
-        );
-
+        VBox imageBox = new VBox(imageView);
+        imageBox.setAlignment(Pos.CENTER);
         imageBox.setPrefWidth(140);
 
-        // =====================================================
-        // RANK
-        // =====================================================
+        Label rankLabel = new Label("#" + rank);
+        rankLabel.setStyle("-fx-text-fill: #DC2626; -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
 
-        Label rankLabel =
-                new Label(
-                        "#" + rank
-                );
-
-        rankLabel.setStyle(
-                "-fx-text-fill: " + PURPLE +
-                "; -fx-font-size: 11px;" +
-                " -fx-font-weight: bold;"
-        );
-
-        // =====================================================
-        // TITLE
-        // =====================================================
-
-        String title =
-                match.getTitle();
-
-        if (title == null ||
-                title.isBlank()) {
-
-            title =
-                    "Untitled result";
+        String title = match.getTitle();
+        if (title == null || title.isBlank()) {
+            title = "Untitled result";
         }
 
-        Label titleLabel =
-                new Label(
-                        title
-                );
-
+        Label titleLabel = new Label(title);
         titleLabel.setWrapText(true);
+        titleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
 
-        titleLabel.setStyle(
-                "-fx-text-fill: " + TEXT +
-                "; -fx-font-size: 14px;" +
-                " -fx-font-weight: bold;"
-        );
-
-        // =====================================================
-        // DOMAIN
-        // =====================================================
-
-        String domain =
-                match.getDomain();
-
-        if (domain == null ||
-                domain.isBlank()) {
-
-            domain =
-                    match.getSource();
+        String domain = match.getDomain();
+        if (domain == null || domain.isBlank()) {
+            domain = match.getSource();
         }
 
-        Label domainLabel =
-                new Label(
-                        domain == null
-                                ? ""
-                                : domain
-                );
+        Label domainLabel = new Label(domain == null ? "" : domain);
+        domainLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
 
-        domainLabel.setStyle(
-                "-fx-text-fill: " + MUTED +
-                "; -fx-font-size: 11px;"
-        );
-
-        // =====================================================
-        // LINK
-        // =====================================================
-
-        Label linkLabel =
-                new Label(
-                        match.getLink()
-                );
-
+        Label linkLabel = new Label(match.getLink());
         linkLabel.setWrapText(true);
-
         linkLabel.setMaxWidth(600);
+        linkLabel.setStyle("-fx-text-fill: #EF4444; -fx-font-size: 11px;");
 
-        linkLabel.setStyle(
-                "-fx-text-fill: #7C9CF5;" +
-                "-fx-font-size: 11px;"
+        Button openButton = new Button("Open Source  →");
+        openButton.getStyleClass().add("btn-accent");
+        openButton.setOnAction(e -> openUrl(match.getLink()));
+
+        VBox details = new VBox(
+                6,
+                rankLabel,
+                titleLabel,
+                domainLabel,
+                linkLabel,
+                openButton
         );
+        details.setAlignment(Pos.TOP_LEFT);
+        HBox.setHgrow(details, Priority.ALWAYS);
 
-        // =====================================================
-        // OPEN BUTTON
-        // =====================================================
-
-        Button openButton =
-                new Button(
-                        "Open Source"
-                );
-
-        openButton.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 6px;" +
-                "-fx-background-radius: 6px;" +
-                "-fx-padding: 6 12;" +
-                "-fx-cursor: hand;"
-        );
-
-        openButton.setOnAction(e ->
-                openUrl(
-                        match.getLink()
-                )
-        );
-
-        // =====================================================
-        // DETAILS
-        // =====================================================
-
-        VBox details =
-                new VBox(
-                        6,
-                        rankLabel,
-                        titleLabel,
-                        domainLabel,
-                        linkLabel,
-                        openButton
-                );
-
-        details.setAlignment(
-                Pos.TOP_LEFT
-        );
-
-        HBox.setHgrow(
-                details,
-                Priority.ALWAYS
-        );
-
-        // =====================================================
-        // CARD
-        // =====================================================
-
-        HBox card =
-                new HBox(
-                        18,
-                        imageBox,
-                        details
-                );
-
-        card.setAlignment(
-                Pos.TOP_LEFT
-        );
-
-        card.setPadding(
-                new Insets(16)
-        );
-
-        card.setMaxWidth(
-                Double.MAX_VALUE
-        );
-
-        card.setStyle(
-                "-fx-background-color: " + PANEL + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 9px;" +
-                "-fx-background-radius: 9px;"
-        );
+        HBox card = new HBox(18, imageBox, details);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setPadding(new Insets(16));
+        card.setMaxWidth(Double.MAX_VALUE);
+        card.getStyleClass().add("cyber-card");
 
         return card;
     }
 
-    // =========================================================
-    // OPEN URL
-    // =========================================================
-
-    private void openUrl(
-            String url
-    ) {
-
-        if (url == null ||
-                url.isBlank()) {
-
-            return;
-        }
-
+    private void openUrl(String url) {
+        if (url == null || url.isBlank()) return;
         try {
-
             if (Desktop.isDesktopSupported()) {
-
-                Desktop.getDesktop().browse(
-                        new URI(url)
-                );
+                Desktop.getDesktop().browse(new URI(url));
             }
-
         } catch (Exception ex) {
-
-            System.err.println(
-                    "Unable to open URL: "
-                            + ex.getMessage()
-            );
+            System.err.println("Unable to open URL: " + ex.getMessage());
         }
     }
 
-    // =========================================================
-    // CLEAN ERROR
-    // =========================================================
-
-    private String cleanError(
-            String message
-    ) {
-
-        if (message == null ||
-                message.isBlank()) {
-
-            return "Unknown error";
-        }
-
-        return message
-                .replace("\n", " ")
-                .replace("\r", " ");
+    private String cleanError(String message) {
+        if (message == null || message.isBlank()) return "Unknown error";
+        return message.replace("\n", " ").replace("\r", " ");
     }
-
-    // =========================================================
-    // SHUTDOWN
-    // =========================================================
 
     public void shutdown() {
-
         executor.shutdownNow();
-
         scanner.shutdown();
     }
 }

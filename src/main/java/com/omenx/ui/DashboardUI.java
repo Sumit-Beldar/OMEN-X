@@ -11,27 +11,22 @@ import java.util.List;
 
 // =========================================================
 // OMEN-X DASHBOARD UI
-// Futuristic OSINT dashboard with Cyber-Dark theme integration
+// Futuristic OSINT dashboard with Crimson Tactical theme integration
 // =========================================================
 
 public class DashboardUI {
 
     // =========================================================
-    // COLOR PALETTE
+    // COLOR PALETTE (Tactical Crimson Unified)
     // =========================================================
 
-    private static final String BG          = "#080C14";
-    private static final String PANEL       = "#0E1624";
-    private static final String BORDER      = "#1B283A";
-    private static final String TEXT        = "#EAF2F8";
-    private static final String MUTED       = "#64748B";
+    private static final String BG          = "#090C12";
+    private static final String TEXT        = "#F1F5F9";
+    private static final String MUTED       = "#788698";
 
-    private static final String GREEN       = "#10B981";
-    private static final String BLUE        = "#00F2FE";
-    private static final String PURPLE      = "#8B5CF6";
-    private static final String YELLOW      = "#F59E0B";
-    private static final String RED         = "#EF4444";
-    private static final String CYAN        = "#00D2FF";
+    private static final String GREEN       = "#22C55E";
+    private static final String RED         = "#DC2626";
+    private static final String YELLOW      = "#EAB308";
 
     // =========================================================
     // CALLBACKS & COMPONENTS
@@ -58,49 +53,22 @@ public class DashboardUI {
     public VBox createDashboard(List<ScanRecord> history) {
 
         // =====================================================
-        // TOP HEADER HERO
+        // TOP HEADER HERO (Using Standardized AppHeader)
         // =====================================================
 
-        Label logo = new Label("INTELLIGENCE DASHBOARD");
-        logo.setStyle(
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-font-size: 22px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-letter-spacing: 1px;"
+        AppHeader header = new AppHeader(
+                "//>",
+                "INTELLIGENCE DASHBOARD",
+                "Real-time reconnaissance, threat intelligence & EXIF forensics",
+                null,
+                false // Hide back button on dashboard
         );
-
-        Label tagline = new Label(
-                "Real-time reconnaissance, threat analysis & EXIF forensics"
-        );
-        tagline.setStyle(
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-font-size: 12px;"
-        );
-
-        VBox branding = new VBox(
-                4,
-                logo,
-                tagline
-        );
-
-        Label systemStatus = new Label("● ONLINE");
-        systemStatus.getStyleClass().addAll("badge", "badge-green");
+        header.setStatus(AppHeader.StatusType.ONLINE, "SYSTEMS ONLINE");
 
         Label activeModulesBadge = new Label("8 MODULES");
-        activeModulesBadge.getStyleClass().addAll("badge", "badge-cyan");
-
-        HBox statusPills = new HBox(8, activeModulesBadge, systemStatus);
-        statusPills.setAlignment(Pos.CENTER_RIGHT);
-
-        HBox header = new HBox(
-                branding,
-                statusPills
-        );
-
-        header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(branding, Priority.ALWAYS);
-        header.setPadding(new Insets(20, 24, 20, 24));
-        header.getStyleClass().add("cyber-card");
+        activeModulesBadge.getStyleClass().addAll("badge", "badge-red");
+        activeModulesBadge.setMinWidth(Region.USE_PREF_SIZE);
+        header.addExtraPill(activeModulesBadge);
 
         // =====================================================
         // METRICS SECTION
@@ -121,15 +89,29 @@ public class DashboardUI {
         Label modulesLabel = new Label("8");
         Label statusLabel = new Label("READY");
 
-        HBox metrics = new HBox(
-                14,
+        GridPane metricsGrid = new GridPane();
+        metricsGrid.setHgap(14);
+        metricsGrid.setVgap(14);
+
+        for (int i = 0; i < 4; i++) {
+            ColumnConstraints col = new ColumnConstraints();
+            col.setPercentWidth(25);
+            col.setHgrow(Priority.ALWAYS);
+            metricsGrid.getColumnConstraints().add(col);
+        }
+
+        metricsGrid.add(
                 createMetricCard(
                         "TOTAL SCANS",
                         totalScansLabel,
                         "Investigations executed",
-                        BLUE,
-                        "metric-accent-cyan"
+                        RED,
+                        "metric-accent-red"
                 ),
+                0, 0
+        );
+
+        metricsGrid.add(
                 createMetricCard(
                         "FINDINGS",
                         findingsLabel,
@@ -137,20 +119,29 @@ public class DashboardUI {
                         GREEN,
                         "metric-accent-green"
                 ),
+                1, 0
+        );
+
+        metricsGrid.add(
                 createMetricCard(
                         "ACTIVE MODULES",
                         modulesLabel,
                         "Intel sources online",
-                        PURPLE,
-                        "metric-accent-purple"
+                        RED,
+                        "metric-accent-red"
                 ),
+                2, 0
+        );
+
+        metricsGrid.add(
                 createMetricCard(
                         "ENGINE STATUS",
                         statusLabel,
-                        "High performance",
+                        "High performance operational",
                         YELLOW,
                         "metric-accent-yellow"
-                )
+                ),
+                3, 0
         );
 
         // =====================================================
@@ -160,12 +151,12 @@ public class DashboardUI {
         Label modulesTitle = new Label("INTELLIGENCE MODULES");
         modulesTitle.setStyle(
                 "-fx-text-fill: " + TEXT + ";" +
-                "-fx-font-size: 16px;" +
+                "-fx-font-size: 15px;" +
                 "-fx-font-weight: bold;" +
-                "-fx-letter-spacing: 1px;"
+                "-fx-letter-spacing: 1.5px;"
         );
 
-        Label modulesSub = new Label("Select a module to launch an investigation workspace");
+        Label modulesSub = new Label("Select an active intelligence module to launch a dedicated workspace");
         modulesSub.setStyle(
                 "-fx-text-fill: " + MUTED + ";" +
                 "-fx-font-size: 12px;"
@@ -177,10 +168,17 @@ public class DashboardUI {
         moduleGrid.setHgap(14);
         moduleGrid.setVgap(14);
 
+        for (int i = 0; i < 4; i++) {
+            ColumnConstraints col = new ColumnConstraints();
+            col.setPercentWidth(25);
+            col.setHgrow(Priority.ALWAYS);
+            moduleGrid.getColumnConstraints().add(col);
+        }
+
         moduleGrid.add(
                 createModuleCard(
-                        "◉ Username Recognition",
-                        "Search 500+ public platforms & social profiles",
+                        "@>  Username Recognition",
+                        "Search 500+ public platforms & social profiles for identity traces.",
                         "OSINT",
                         "badge-green",
                         () -> moduleAction.open("Username")
@@ -190,10 +188,10 @@ public class DashboardUI {
 
         moduleGrid.add(
                 createModuleCard(
-                        "✉ Email Exposure",
-                        "Check breach records, domain & deliverability",
+                        "#>  Email Exposure",
+                        "Check breach records, domain validity & email account deliverability.",
                         "BREACH",
-                        "badge-cyan",
+                        "badge-red",
                         () -> moduleAction.open("Email")
                 ),
                 1, 0
@@ -201,10 +199,10 @@ public class DashboardUI {
 
         moduleGrid.add(
                 createModuleCard(
-                        "🌐 Domain & DNS",
-                        "Analyze WHOIS, DNS records & subdomains",
+                        "::>  Domain & DNS",
+                        "Analyze WHOIS records, DNS routing, mail exchange & active subdomains.",
                         "INFRA",
-                        "badge-purple",
+                        "badge-red",
                         () -> moduleAction.open("Domain")
                 ),
                 2, 0
@@ -212,61 +210,61 @@ public class DashboardUI {
 
         moduleGrid.add(
                 createModuleCard(
-                        "⊕ IP Geolocation",
-                        "Geolocate IP, ASN, ISP & threat reputation",
+                        "[]>  IP Geolocation",
+                        "Geolocate IP, resolve ASN, carrier ISP & query threat reputation.",
                         "NETWORK",
                         "badge-yellow",
                         () -> moduleAction.open("IP Address")
+                ),
+                3, 0
+        );
+
+        moduleGrid.add(
+                createModuleCard(
+                        "{}>  Phone Intel",
+                        "Carrier info, validity, geographic area & telecom metadata.",
+                        "TELECOM",
+                        "badge-yellow",
+                        () -> moduleAction.open("Phone")
                 ),
                 0, 1
         );
 
         moduleGrid.add(
                 createModuleCard(
-                        "📱 Phone Intel",
-                        "Carrier info, validity & geographic metadata",
-                        "TELECOM",
-                        "badge-cyan",
-                        () -> moduleAction.open("Phone")
+                        "<>  EXIF Metadata",
+                        "Extract camera models, timestamps, software & GPS coordinates.",
+                        "EXIF",
+                        "badge-green",
+                        moduleAction::openImageMetadata
                 ),
                 1, 1
         );
 
         moduleGrid.add(
                 createModuleCard(
-                        "📷 EXIF Metadata",
-                        "Extract camera settings, dates & GPS location",
-                        "EXIF",
-                        "badge-purple",
-                        moduleAction::openImageMetadata
+                        ">>  Reverse Image",
+                        "Identify identical and visually matching imagery across search engines.",
+                        "VISUAL",
+                        "badge-green",
+                        moduleAction::openReverseImage
                 ),
                 2, 1
         );
 
         moduleGrid.add(
                 createModuleCard(
-                        "🔍 Reverse Image",
-                        "Identify identical & visually matching images",
-                        "VISUAL",
-                        "badge-green",
-                        moduleAction::openReverseImage
-                ),
-                0, 2
-        );
-
-        moduleGrid.add(
-                createModuleCard(
-                        "☣ Malware Analysis",
-                        "Scan file hashes with VirusTotal threat engine",
+                        "!!>  Malware Analysis",
+                        "Scan file hashes with multi-engine static & VirusTotal threat analysis.",
                         "THREAT",
                         "badge-red",
                         () -> moduleAction.open("Malware Analysis")
                 ),
-                1, 2
+                3, 1
         );
 
         VBox modulesSection = new VBox(
-                14,
+                16,
                 modulesHeading,
                 moduleGrid
         );
@@ -283,7 +281,7 @@ public class DashboardUI {
                 "-fx-text-fill: " + TEXT + ";" +
                 "-fx-font-size: 15px;" +
                 "-fx-font-weight: bold;" +
-                "-fx-letter-spacing: 1px;"
+                "-fx-letter-spacing: 1.5px;"
         );
 
         recentActivityBox = new VBox(8);
@@ -307,9 +305,10 @@ public class DashboardUI {
         );
         notice.setStyle(
                 "-fx-text-fill: " + MUTED + ";" +
-                "-fx-font-size: 10px;"
+                "-fx-font-size: 11px;"
         );
         notice.setAlignment(Pos.CENTER);
+        notice.setMaxWidth(Double.MAX_VALUE);
 
         // =====================================================
         // CONTAINER LAYOUT
@@ -318,7 +317,7 @@ public class DashboardUI {
         VBox content = new VBox(
                 20,
                 header,
-                metrics,
+                metricsGrid,
                 modulesSection,
                 recentSection,
                 notice
@@ -372,7 +371,7 @@ public class DashboardUI {
         recentActivityBox.getChildren().clear();
 
         if (history == null || history.isEmpty()) {
-            Label empty = new Label("No investigations run yet. Select a module above to get started.");
+            Label empty = new Label("No investigations run yet. Select an intelligence module above to begin.");
             empty.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
             empty.setPadding(new Insets(10));
             recentActivityBox.getChildren().add(empty);
@@ -394,18 +393,41 @@ public class DashboardUI {
     private HBox createRecentRow(ScanRecord record) {
         Label type = new Label(record.getType());
         type.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px; -fx-font-weight: bold;");
-        type.setMinWidth(110);
+        type.setMinWidth(130);
 
         Label target = new Label(record.getTarget());
         target.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 12px;");
         HBox.setHgrow(target, Priority.ALWAYS);
 
-        Label result = new Label(record.getFound() > 0 ? record.getFound() + " MATCHES" : "CLEAN");
+        String scanType = record.getType();
+        int findings = record.getFound();
+
+        // Choose a meaningful label based on scan type and finding count
+        String badgeText;
+        String badgeStyle;
+        if (findings > 0) {
+            if ("Email".equals(scanType)) {
+                badgeText = "BREACH";
+            } else if ("Malware Analysis".equals(scanType)) {
+                badgeText = "MALICIOUS";
+            } else if ("IP Address".equals(scanType)) {
+                badgeText = "AT RISK";
+            } else {
+                badgeText = findings + " MATCHES";
+            }
+            badgeStyle = "badge-red";
+        } else {
+            badgeText = "CLEAN";
+            badgeStyle = "badge-green";
+        }
+
+        Label result = new Label(badgeText);
         result.getStyleClass().add("badge");
-        result.getStyleClass().add(record.getFound() > 0 ? "badge-green" : "badge-cyan");
+        result.getStyleClass().add(badgeStyle);
+        result.setMinWidth(Region.USE_PREF_SIZE);
 
         Label time = new Label(record.getTime());
-        time.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px;");
+        time.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
         time.setMinWidth(80);
         time.setAlignment(Pos.CENTER_RIGHT);
 
@@ -448,17 +470,17 @@ public class DashboardUI {
         );
 
         Label desc = new Label(description);
-        desc.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px;");
+        desc.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
 
         VBox card = new VBox(
-                4,
+                6,
                 titleLabel,
                 value,
                 desc
         );
 
-        card.setPrefWidth(210);
-        card.setPrefHeight(100);
+        card.setMaxWidth(Double.MAX_VALUE);
+        card.setPrefHeight(105);
         card.setPadding(new Insets(16));
         card.getStyleClass().addAll("cyber-card", accentCssClass);
 
@@ -466,7 +488,7 @@ public class DashboardUI {
     }
 
     // =========================================================
-    // MODULE CARD BUILDER
+    // MODULE CARD BUILDER (Unclippable, Responsive)
     // =========================================================
 
     private VBox createModuleCard(
@@ -477,32 +499,38 @@ public class DashboardUI {
             Runnable action
     ) {
         Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+        titleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        titleLabel.setWrapText(false);
+        HBox.setHgrow(titleLabel, Priority.ALWAYS);
 
         Label tag = new Label(categoryTag);
         tag.getStyleClass().addAll("badge", badgeStyleClass);
+        tag.setMinWidth(Region.USE_PREF_SIZE); // Never clipped!
 
-        HBox cardHeader = new HBox(titleLabel, tag);
+        HBox cardHeader = new HBox(8, titleLabel, tag);
         cardHeader.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(titleLabel, Priority.ALWAYS);
 
         Label desc = new Label(description);
-        desc.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
+        desc.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px; -fx-line-spacing: 2px;");
         desc.setWrapText(true);
+        desc.setMinHeight(36);
+        VBox.setVgrow(desc, Priority.ALWAYS);
 
         Button open = new Button("LAUNCH WORKSPACE  →");
         open.getStyleClass().add("btn-accent");
+        open.setMaxWidth(Double.MAX_VALUE);
         open.setOnAction(e -> action.run());
 
         VBox card = new VBox(
-                10,
+                12,
                 cardHeader,
                 desc,
                 open
         );
 
-        card.setPrefWidth(220);
-        card.setPrefHeight(130);
+        card.setMaxWidth(Double.MAX_VALUE);
+        card.setMinHeight(165);
+        card.setPrefHeight(170);
         card.setPadding(new Insets(16));
         card.getStyleClass().add("cyber-card-interactive");
 
