@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # 🕵️ OMEN-X — Tactical OSINT & Threat Intelligence Platform
 
 [![Java](https://img.shields.io/badge/Java-25%2B-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/)
@@ -664,4 +663,4 @@ This project is open source. Please check the repository for the specific licens
 ---
 
 **Made for cybersecurity education and legitimate OSINT research.**
->>>>>>> 2065ddb4a595384d019bdc1236b5d700e81d12dd
+
