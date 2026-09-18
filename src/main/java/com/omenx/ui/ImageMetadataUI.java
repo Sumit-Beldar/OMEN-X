@@ -18,19 +18,15 @@ import java.util.concurrent.Executors;
 
 // =========================================================
 // IMAGE METADATA UI
-// Tactical OSINT EXIF Metadata & Geolocation Extraction
+// Dark Glassmorphic EXIF Metadata & Geolocation Extraction
 // =========================================================
-
 public class ImageMetadataUI {
 
-    private static final String BG      = "#090C12";
-    private static final String PANEL   = "#111520";
-    private static final String SURFACE = "#141824";
-    private static final String BORDER  = "#1C2234";
+    private static final String BG      = "#060810";
     private static final String TEXT    = "#F1F5F9";
-    private static final String MUTED   = "#788698";
-    private static final String GREEN   = "#22C55E";
-    private static final String RED     = "#DC2626";
+    private static final String MUTED   = "#64748B";
+    private static final String CYAN    = "#22D3EE";
+    private static final String GREEN   = "#10B981";
 
     private final Runnable backAction;
     private final ScanService scanService;
@@ -51,13 +47,12 @@ public class ImageMetadataUI {
     // =========================================================
     // CREATE VIEW
     // =========================================================
-
     public VBox createView() {
 
         header = new AppHeader(
                 "<>",
-                "EXIF METADATA",
-                "Extract camera settings, hardware signatures, timestamps & GPS forensics",
+                "EXIF METADATA & FORENSICS",
+                "Extract camera optical signatures, timestamps, hardware profiles & GPS coordinates",
                 backAction
         );
 
@@ -65,10 +60,10 @@ public class ImageMetadataUI {
         dropIcon.setStyle("-fx-font-size: 32px;");
 
         Label dropText = new Label("Drag & Drop image file here, or click to browse");
-        dropText.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        dropText.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
 
         Label dropSub = new Label("Supports JPG, PNG, GIF, TIFF, WEBP EXIF & GPS extraction");
-        dropSub.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
+        dropSub.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
         Button selectButton = new Button("Choose Image File…");
         selectButton.getStyleClass().add("btn-primary");
@@ -79,7 +74,7 @@ public class ImageMetadataUI {
 
         VBox results = new VBox(
                 8,
-                createEmptyState("Select or drop an image above to analyze EXIF metadata.")
+                createEmptyState("Select or drop an image above to analyze EXIF metadata signatures.")
         );
 
         ScrollPane scroll = new ScrollPane(results);
@@ -134,24 +129,35 @@ public class ImageMetadataUI {
         });
 
         dropZone.setOnDragDropped(event -> {
-            javafx.scene.input.Dragboard db = event.getDragboard();
+            var db = event.getDragboard();
             boolean success = false;
             if (db.hasFiles() && !db.getFiles().isEmpty()) {
-                processFile.accept(db.getFiles().get(0));
-                success = true;
+                File file = db.getFiles().get(0);
+                String name = file.getName().toLowerCase();
+                if (name.endsWith(".jpg") || name.endsWith(".jpeg")
+                        || name.endsWith(".png") || name.endsWith(".gif")
+                        || name.endsWith(".tif") || name.endsWith(".tiff")
+                        || name.endsWith(".webp")) {
+                    processFile.accept(file);
+                    success = true;
+                } else {
+                    results.getChildren().setAll(
+                            createEmptyState("Unsupported file type: " + file.getName() + " (Select an image)")
+                    );
+                }
             }
             event.setDropCompleted(success);
             event.consume();
         });
 
         VBox content = new VBox(
-                18,
+                16,
                 header,
                 dropZone,
                 scroll
         );
 
-        content.setPadding(new Insets(20, 28, 20, 28));
+        content.setPadding(new Insets(20, 26, 20, 26));
         content.setStyle("-fx-background-color: " + BG + ";");
         return content;
     }
@@ -159,7 +165,6 @@ public class ImageMetadataUI {
     // =========================================================
     // RENDER METADATA
     // =========================================================
-
     private void renderImageMetadataWithPreview(
             VBox results,
             ImageMetadataScanner.Result result,
@@ -176,14 +181,14 @@ public class ImageMetadataUI {
                 imgView.setPreserveRatio(true);
 
                 Label fileTitle = new Label("📷  " + file.getName());
-                fileTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+                fileTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
 
                 Label pathLabel = new Label(file.getAbsolutePath());
-                pathLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
+                pathLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
                 VBox previewBox = new VBox(8, imgView, fileTitle, pathLabel);
                 previewBox.setAlignment(Pos.CENTER);
-                previewBox.getStyleClass().add("cyber-card");
+                previewBox.getStyleClass().add("glass-panel");
                 previewBox.setPadding(new Insets(16));
 
                 results.getChildren().add(previewBox);
@@ -263,31 +268,31 @@ public class ImageMetadataUI {
 
         Label key = new Label(label);
         key.setMinWidth(160);
-        key.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px; -fx-font-weight: bold;");
+        key.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
 
         Label val = new Label(display);
         val.setWrapText(true);
-        val.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
+        val.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
         HBox.setHgrow(val, Priority.ALWAYS);
 
         HBox row = new HBox(16, key, val);
         row.setAlignment(Pos.TOP_LEFT);
         row.setPadding(new Insets(10, 16, 10, 16));
-        row.getStyleClass().add("cyber-card");
+        row.getStyleClass().add("activity-row");
 
         results.getChildren().add(row);
     }
 
     private Label createSectionHeader(String text) {
-        Label label = new Label(text);
-        label.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px; -fx-font-weight: bold; -fx-padding: 14 0 4 0; -fx-letter-spacing: 1px;");
+        Label label = new Label("// " + text.toUpperCase() + " //");
+        label.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 14 0 4 2; -fx-letter-spacing: 1.5px;");
         return label;
     }
 
     private Label createEmptyState(String text) {
         Label label = new Label(text);
-        label.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
-        label.setPadding(new Insets(28, 0, 20, 0));
+        label.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
+        label.setPadding(new Insets(24, 0, 16, 0));
         return label;
     }
 

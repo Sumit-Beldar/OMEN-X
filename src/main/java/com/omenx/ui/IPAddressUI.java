@@ -24,36 +24,20 @@ import java.time.format.DateTimeFormatter;
 
 // =========================================================
 // IP ADDRESS UI
-// Tactical OSINT IP Geolocation & Network Intelligence
+// Dark Glassmorphic IP Geolocation & Network Intelligence
 // =========================================================
-
 public class IPAddressUI {
 
-    // =========================================================
-    // COLORS (Tactical Crimson Unified)
-    // =========================================================
-
-    private static final String BG      = "#090C12";
-    private static final String PANEL   = "#111520";
-    private static final String SURFACE = "#141824";
-    private static final String BORDER  = "#1C2234";
+    private static final String BG      = "#060810";
     private static final String TEXT    = "#F1F5F9";
-    private static final String MUTED   = "#788698";
-    private static final String RED     = "#DC2626";
+    private static final String MUTED   = "#64748B";
+    private static final String CYAN    = "#22D3EE";
     private static final String ERROR   = "#EF4444";
-    private static final String SUCCESS = "#22C55E";
-
-    // =========================================================
-    // SERVICES
-    // =========================================================
+    private static final String SUCCESS = "#10B981";
 
     private final IPScanner scanner;
     private final ScanService scanService;
     private final Runnable backAction;
-
-    // =========================================================
-    // UI
-    // =========================================================
 
     private AppHeader header;
     private Label statusLabel;
@@ -62,75 +46,62 @@ public class IPAddressUI {
     private TextField ipField;
     private Button scanButton;
 
-    // Stat strip labels (populated after each scan)
+    // Stat strip labels
     private Label statCountry;
     private Label statIsp;
     private Label statThreat;
     private Label statType;
     private Label resultsTarget;
 
-    // =========================================================
-    // LAST RESULT
-    // =========================================================
-
     private IPResult lastResult;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
-
-    public IPAddressUI(
-            Runnable backAction,
-            ScanService scanService
-    ) {
+    public IPAddressUI(Runnable backAction, ScanService scanService) {
         this.backAction = backAction;
         this.scanService = scanService;
         this.scanner = new IPScanner();
     }
 
-    // =========================================================
-    // CREATE VIEW
-    // =========================================================
-
     public BorderPane createView() {
-
         BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: " + BG + ";");
 
-        // ── Standardized Header ──
+        // ── Standardized App Header ──
         header = new AppHeader(
                 "[]>",
-                "IP GEOLOCATION",
-                "Geolocate IP, resolve ASN, carrier ISP & threat reputation",
+                "IP GEOLOCATION & NETWORK INTEL",
+                "Geolocate IP, resolve ASN, carrier ISP routing & query abuse reputation",
                 backAction
         );
         root.setTop(header);
 
-        // ── IP Tag + Input Row (matches USERNAME/EMAIL/DOMAIN/PHONE modules) ──
-        Label ipTag = new Label("IP");
+        // ── Input Row ──
+        Label ipTag = new Label("IP / HOST");
         ipTag.setPrefHeight(44);
-        ipTag.setMinWidth(80);
+        ipTag.setMinWidth(110);
         ipTag.setAlignment(Pos.CENTER);
         ipTag.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 6px 0 0 6px;" +
-                "-fx-background-radius: 6px 0 0 6px;" +
-                "-fx-font-family: 'Consolas', monospace;" +
+                "-fx-background-color: rgba(14, 20, 32, 0.90);" +
+                "-fx-text-fill: #22D3EE;" +
+                "-fx-border-color: rgba(34, 211, 238, 0.25);" +
+                "-fx-border-radius: 8px 0 0 8px;" +
+                "-fx-background-radius: 8px 0 0 8px;" +
+                "-fx-font-family: 'JetBrains Mono', 'Consolas', monospace;" +
                 "-fx-font-size: 11px;" +
-                "-fx-font-weight: bold;"
+                "-fx-font-weight: bold;" +
+                "-fx-letter-spacing: 1px;"
         );
 
         ipField = new TextField();
-        ipField.setPromptText("Enter IP address (e.g., 8.8.8.8)...");
+        ipField.setPromptText("Enter IPv4 or IPv6 address (e.g. 8.8.8.8, 1.1.1.1)...");
         ipField.setPrefHeight(44);
         ipField.getStyleClass().add("cyber-input");
+        ipField.setStyle("-fx-border-radius: 0; -fx-background-radius: 0;");
         HBox.setHgrow(ipField, Priority.ALWAYS);
 
         scanButton = new Button("EXECUTE SCAN");
         scanButton.setPrefHeight(44);
         scanButton.getStyleClass().add("btn-primary");
+        scanButton.setStyle("-fx-border-radius: 0 8px 8px 0; -fx-background-radius: 0 8px 8px 0;");
         scanButton.setOnAction(e -> scanIP());
         ipField.setOnAction(e -> scanIP());
 
@@ -148,7 +119,7 @@ public class IPAddressUI {
             statThreat.setText("—");
             statType.setText("—");
             statusLabel.setText("Enter an IP address to begin investigation.");
-            statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+            statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
             header.setStatus(AppHeader.StatusType.READY, "READY");
         });
 
@@ -175,47 +146,55 @@ public class IPAddressUI {
 
         // ── Status ──
         statusLabel = new Label("Enter an IP address to begin investigation.");
-        statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
-        // ── 4-Tile Stat Strip ──
+        // ── 4-Tile Stat Strip (Glass Panels) ──
         statCountry = new Label("—");
         statIsp     = new Label("—");
         statThreat  = new Label("—");
         statType    = new Label("—");
 
         HBox statStrip = new HBox(12,
-                createStatTile("COUNTRY",      statCountry),
-                createStatTile("ISP / ASN",    statIsp),
-                createStatTile("THREAT LEVEL", statThreat),
-                createStatTile("IP TYPE",      statType)
+                createStatTile("COUNTRY", statCountry),
+                createStatTile("ISP / ASN", statIsp),
+                createStatTile("THREAT SCORE", statThreat),
+                createStatTile("USAGE TYPE", statType)
         );
         statStrip.setAlignment(Pos.CENTER_LEFT);
 
-        // ── Investigation Results header ──
-        Label resultsTitle = new Label("Investigation Results");
-        resultsTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+        // ── Investigation Results Header Pattern ──
+        HBox resultsHeader = AppHeader.createPanelHeader(
+                "◈",
+                "GEOLOCATION & NETWORK TELEMETRY",
+                "READY",
+                AppHeader.StatusType.READY,
+                "RESOLVED"
+        );
 
         resultsTarget = new Label("No target selected");
-        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
-        HBox resultsHeader = new HBox(12, resultsTitle, resultsTarget);
-        resultsHeader.setAlignment(Pos.CENTER_LEFT);
+        HBox targetRow = new HBox(8, new Label("TARGET:"), resultsTarget);
+        targetRow.setPadding(new Insets(2, 16, 8, 16));
+        targetRow.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
-        // ── Results ──
-        resultsContainer = new VBox(16);
+        // ── Results Container ──
+        resultsContainer = new VBox(14);
+        resultsContainer.setPadding(new Insets(6, 16, 16, 16));
 
-        // ── Main Content ──
+        VBox resultsCardWrapper = new VBox(4, resultsHeader, targetRow, resultsContainer);
+        resultsCardWrapper.getStyleClass().add("glass-panel");
+
         VBox content = new VBox(
                 16,
                 inputBox,
                 actionRow,
                 statusLabel,
                 statStrip,
-                resultsHeader,
-                resultsContainer
+                resultsCardWrapper
         );
 
-        content.setPadding(new Insets(20, 28, 28, 28));
+        content.setPadding(new Insets(20, 26, 26, 26));
 
         ScrollPane scrollPane = new ScrollPane(content);
         scrollPane.setFitToWidth(true);
@@ -231,40 +210,37 @@ public class IPAddressUI {
     private VBox createStatTile(String title, Label value) {
         Label titleLabel = new Label(title);
         titleLabel.setStyle(
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-font-size: 10px;" +
+                "-fx-text-fill: #64748B;" +
+                "-fx-font-family: 'JetBrains Mono', 'Consolas', monospace;" +
+                "-fx-font-size: 9px;" +
                 "-fx-font-weight: bold;" +
                 "-fx-letter-spacing: 1px;"
         );
-        value.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        value.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
         value.setWrapText(true);
         VBox tile = new VBox(4, titleLabel, value);
         tile.setPadding(new Insets(12, 16, 12, 16));
         tile.setPrefWidth(170);
         tile.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(tile, Priority.ALWAYS);
-        tile.getStyleClass().add("cyber-card");
+        tile.getStyleClass().add("glass-panel");
         return tile;
     }
-
-    // =========================================================
-    // SCAN IP
-    // =========================================================
 
     private void scanIP() {
         String ip = ipField.getText().trim();
 
         if (ip.isEmpty()) {
             statusLabel.setText("Please enter an IP address.");
-            statusLabel.setStyle("-fx-text-fill: " + ERROR + ";");
+            statusLabel.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
             header.setStatus(AppHeader.StatusType.WARNING, "IP REQUIRED");
             return;
         }
 
         scanButton.setDisable(true);
         ipField.setDisable(true);
-        statusLabel.setText("Scanning IP address " + ip + "...");
-        statusLabel.setStyle("-fx-text-fill: " + MUTED + ";");
+        statusLabel.setText("Scanning IP address " + ip + " across geolocation databases...");
+        statusLabel.setStyle("-fx-text-fill: " + CYAN + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
         header.setStatus(AppHeader.StatusType.SCANNING, "SCANNING " + ip);
 
         resultsContainer.getChildren().clear();
@@ -283,7 +259,7 @@ public class IPAddressUI {
             } catch (Exception ex) {
                 Platform.runLater(() -> {
                     statusLabel.setText("Scan failed: " + ex.getMessage());
-                    statusLabel.setStyle("-fx-text-fill: " + ERROR + ";");
+                    statusLabel.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
                     header.setStatus(AppHeader.StatusType.ERROR, "ERROR");
                     scanButton.setDisable(false);
                     ipField.setDisable(false);
@@ -295,13 +271,9 @@ public class IPAddressUI {
         thread.start();
     }
 
-    // =========================================================
-    // DISPLAY RESULT
-    // =========================================================
-
     private void displayResult(IPResult result) {
-        statusLabel.setText("Scan completed successfully.");
-        statusLabel.setStyle("-fx-text-fill: " + SUCCESS + ";");
+        statusLabel.setText("Scan completed successfully • Geolocation and routing records retrieved");
+        statusLabel.setStyle("-fx-text-fill: " + SUCCESS + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
         // Populate stat strip tiles
         String country = safe(result.getCountry());
@@ -314,20 +286,20 @@ public class IPAddressUI {
 
         String abuseScore = safe(result.getAbuseConfidenceScore());
         if (abuseScore.equals("Unknown") || abuseScore.equals("0")) {
-            statThreat.setText("LOW");
-            statThreat.setStyle("-fx-text-fill: " + SUCCESS + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+            statThreat.setText("LOW (0%)");
+            statThreat.setStyle("-fx-text-fill: " + SUCCESS + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
         } else {
             try {
                 int score = Integer.parseInt(abuseScore.replaceAll("[^0-9]", ""));
                 if (score >= 50) {
                     statThreat.setText("HIGH (" + score + "%)");
-                    statThreat.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+                    statThreat.setStyle("-fx-text-fill: " + ERROR + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
                 } else if (score > 0) {
                     statThreat.setText("MEDIUM (" + score + "%)");
-                    statThreat.setStyle("-fx-text-fill: #EAB308; -fx-font-size: 13px; -fx-font-weight: bold;");
+                    statThreat.setStyle("-fx-text-fill: #F59E0B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
                 } else {
-                    statThreat.setText("LOW");
-                    statThreat.setStyle("-fx-text-fill: " + SUCCESS + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+                    statThreat.setText("LOW (0%)");
+                    statThreat.setStyle("-fx-text-fill: " + SUCCESS + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
                 }
             } catch (NumberFormatException ex) {
                 statThreat.setText(abuseScore);
@@ -337,9 +309,7 @@ public class IPAddressUI {
         String usageType = safe(result.getUsageType());
         statType.setText(usageType.equals("Unknown") ? "—" : usageType);
 
-        // Update results target label
         resultsTarget.setText(safe(result.getIp()));
-        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
 
         // LOCATION
         Label locationTitle = sectionTitle("LOCATION METADATA");
@@ -381,8 +351,8 @@ public class IPAddressUI {
         VBox securityPanel = createPanel(securityTitle, securityGrid);
 
         // MAP BUTTON
-        Button mapButton = new Button("📍  Open on Interactive Map");
-        mapButton.setPrefHeight(40);
+        Button mapButton = new Button("📍  Open on Interactive Map  →");
+        mapButton.setPrefHeight(38);
         mapButton.getStyleClass().add("btn-accent");
         mapButton.setOnAction(e -> openMap(result));
 
@@ -479,33 +449,33 @@ public class IPAddressUI {
     private GridPane createGrid() {
         GridPane grid = new GridPane();
         grid.setHgap(30);
-        grid.setVgap(12);
+        grid.setVgap(10);
         return grid;
     }
 
     private void addRow(GridPane grid, int row, String key, String value) {
         Label keyLabel = new Label(key);
         keyLabel.setMinWidth(180);
-        keyLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px; -fx-font-weight: bold;");
+        keyLabel.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
 
         Label valueLabel = new Label(safe(value));
         valueLabel.setWrapText(true);
-        valueLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
+        valueLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
 
         grid.add(keyLabel, 0, row);
         grid.add(valueLabel, 1, row);
     }
 
     private Label sectionTitle(String text) {
-        Label label = new Label(text);
-        label.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
+        Label label = new Label("// " + text.toUpperCase() + " //");
+        label.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-letter-spacing: 1.5px;");
         return label;
     }
 
     private VBox createPanel(javafx.scene.Node... nodes) {
-        VBox panel = new VBox(14, nodes);
-        panel.setPadding(new Insets(18));
-        panel.getStyleClass().add("cyber-card");
+        VBox panel = new VBox(12, nodes);
+        panel.setPadding(new Insets(14, 16, 14, 16));
+        panel.getStyleClass().add("glass-panel");
         return panel;
     }
 

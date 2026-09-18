@@ -27,10 +27,17 @@ import com.omenx.ui.ReverseImageUI;
 import com.omenx.ui.IPAddressUI;
 import com.omenx.ui.MalwareAnalysisUI;
 import com.omenx.ui.LoginUI;
+import com.omenx.ui.OsirisLauncherUI;
+import com.omenx.osiris.OsirisConfig;
+import com.omenx.osiris.OsirisRuntimeManager;
+import com.omenx.osiris.OsirisInstaller;
+import com.omenx.osiris.OsirisProcessManager;
 
 // =========================================================
 // JAVAFX IMPORTS
 // =========================================================
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
@@ -41,6 +48,7 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 // =========================================================
 // JAVA STANDARD LIBRARY IMPORTS
@@ -57,24 +65,25 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 // =========================================================
-// MAIN APPLICATION
+// MAIN APPLICATION — DARK GLASS INTELLIGENCE DASHBOARD
 // =========================================================
 public class Main extends Application {
 
     // =========================================================
-    // COLOR SYSTEM (Tactical Crimson Unified)
+    // COLOR SYSTEM (Dark Glassmorphic Intelligence System)
     // =========================================================
-    private static final String BG          = "#090C12";
-    private static final String PANEL       = "#111520";
-    private static final String SURFACE     = "#141824";
-    private static final String SURFACE_2   = "#1A1F30";
-    private static final String BORDER      = "#1C2234";
-    private static final String BORDER_SOFT = "#2D354E";
+    private static final String BG          = "#060810";
+    private static final String PANEL       = "rgba(13, 19, 32, 0.78)";
+    private static final String SURFACE     = "rgba(16, 24, 40, 0.85)";
+    private static final String SURFACE_2   = "rgba(20, 32, 52, 0.90)";
+    private static final String BORDER      = "rgba(34, 211, 238, 0.20)";
+    private static final String BORDER_SOFT = "rgba(34, 211, 238, 0.40)";
     private static final String TEXT        = "#F1F5F9";
-    private static final String MUTED       = "#788698";
-    private static final String GREEN       = "#22C55E";
-    private static final String RED         = "#DC2626";
-    private static final String YELLOW      = "#EAB308";
+    private static final String MUTED       = "#64748B";
+    private static final String CYAN        = "#22D3EE";
+    private static final String GREEN       = "#10B981";
+    private static final String RED         = "#EF4444";
+    private static final String YELLOW      = "#F59E0B";
 
     // =========================================================
     // APPLICATION STATE
@@ -100,11 +109,22 @@ public class Main extends Application {
     private IPAddressUI ipAddressUI;
     private MalwareAnalysisUI malwareAnalysisUI;
     private LoginUI loginUI;
+    private OsirisConfig osirisConfig;
+    private OsirisRuntimeManager osirisRuntimeManager;
+    private OsirisInstaller osirisInstaller;
+    private OsirisProcessManager osirisProcessManager;
+    private OsirisLauncherUI osirisLauncherUI;
 
     // =========================================================
-    // MAIN APPLICATION CONTAINER
+    // MAIN APPLICATION CONTAINER & CHROME
     // =========================================================
     private BorderPane root;
+
+    private HBox topStatusBar;
+    private HBox bottomStatusBar;
+    private Label topClockLabel;
+    private Label bottomStatusLabel;
+    private Timeline clockTimeline;
 
     private VBox dashboardView;
     private VBox scanView;
@@ -137,7 +157,9 @@ public class Main extends Application {
 
     private void onLoginSuccess(String username) {
         this.currentUsername = username;
+        root.setTop(createTopStatusBar());
         root.setLeft(createSidebar());
+        root.setBottom(createBottomStatusBar());
         showDashboard();
     }
 
@@ -171,7 +193,19 @@ public class Main extends Application {
             public void openReverseImage() {
                 openReverseImageScanner();
             }
+
+            @Override
+            public void openOsirisLauncher() {
+                Main.this.openOsirisLauncher();
+            }
         });
+
+        // Initialize OSIRIS Subsystem
+        osirisConfig = new OsirisConfig();
+        osirisRuntimeManager = new OsirisRuntimeManager(osirisConfig);
+        osirisInstaller = new OsirisInstaller(osirisConfig, osirisRuntimeManager);
+        osirisProcessManager = new OsirisProcessManager(osirisConfig, osirisRuntimeManager, osirisInstaller);
+        osirisLauncherUI = new OsirisLauncherUI(osirisConfig, osirisRuntimeManager, osirisInstaller, osirisProcessManager, this::showDashboard);
 
         // Initialize Dedicated Intelligence UIs
         imageMetadataUI = new ImageMetadataUI(this::showDashboard, scanService);
@@ -199,62 +233,162 @@ public class Main extends Application {
         } catch (Exception ignored) {
         }
 
-        stage.setTitle("OMEN-X  •  Tactical OSINT Platform");
-        stage.setMinWidth(1080);
-        stage.setMinHeight(720);
+        stage.setTitle("OMEN-X  •  Global OSINT & Intelligence Dashboard");
+        stage.setMinWidth(1100);
+        stage.setMinHeight(750);
         stage.setScene(scene);
         stage.show();
 
         // Cleanup on Close
         stage.setOnCloseRequest(e -> {
+            if (clockTimeline != null) clockTimeline.stop();
             executor.shutdownNow();
             if (imageMetadataUI != null) imageMetadataUI.shutdown();
             if (reverseImageUI != null) reverseImageUI.shutdown();
             if (loginUI != null) loginUI.stopAnimation();
+            if (osirisProcessManager != null) osirisProcessManager.shutdown();
         });
     }
 
     // =========================================================
-    // PERSISTENT SIDEBAR NAVIGATION
+    // TOP STATUS BAR (Live Intelligence Chrome)
+    // =========================================================
+    private HBox createTopStatusBar() {
+        topStatusBar = new HBox(16);
+        topStatusBar.getStyleClass().add("top-status-bar");
+        topStatusBar.setAlignment(Pos.CENTER_LEFT);
+
+        // Brand + Wordmark + Tagline
+        Label logo = new Label("OMEN-X");
+        logo.getStyleClass().add("top-bar-logo");
+
+        Label tagline = new Label("// GLOBAL OSINT INTELLIGENCE PLATFORM");
+        tagline.getStyleClass().add("top-bar-tagline");
+
+        HBox brandBox = new HBox(10, logo, tagline);
+        brandBox.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(brandBox, Priority.ALWAYS);
+
+        // Separator utility
+        Region div1 = createDivider();
+        Region div2 = createDivider();
+        Region div3 = createDivider();
+        Region div4 = createDivider();
+
+        // Status Readouts
+        topClockLabel = new Label();
+        topClockLabel.getStyleClass().add("top-bar-item-value");
+        updateClock();
+
+        if (clockTimeline != null) clockTimeline.stop();
+        clockTimeline = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateClock()));
+        clockTimeline.setCycleCount(Timeline.INDEFINITE);
+        clockTimeline.play();
+
+        HBox clockBox = new HBox(6, createBarLabel("TIME:"), topClockLabel);
+        clockBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label connVal = new Label("ENCRYPTED");
+        connVal.setStyle("-fx-text-fill: #10B981; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
+        HBox connBox = new HBox(6, createBarLabel("GATEWAY:"), connVal);
+        connBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label modVal = new Label("9 / 9 ONLINE");
+        modVal.getStyleClass().add("top-bar-item-value");
+        HBox modBox = new HBox(6, createBarLabel("MODULES:"), modVal);
+        modBox.setAlignment(Pos.CENTER_LEFT);
+
+        Label verVal = new Label("v2.5-PROD");
+        verVal.setStyle("-fx-text-fill: #94A3B8; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+        HBox verBox = new HBox(6, createBarLabel("BUILD:"), verVal);
+        verBox.setAlignment(Pos.CENTER_LEFT);
+
+        topStatusBar.getChildren().addAll(brandBox, clockBox, div1, connBox, div2, modBox, div3, verBox);
+        return topStatusBar;
+    }
+
+    private Region createDivider() {
+        Region div = new Region();
+        div.getStyleClass().add("top-bar-divider");
+        return div;
+    }
+
+    private Label createBarLabel(String text) {
+        Label lbl = new Label(text);
+        lbl.getStyleClass().add("top-bar-item");
+        return lbl;
+    }
+
+    private void updateClock() {
+        if (topClockLabel != null) {
+            topClockLabel.setText(LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + " UTC");
+        }
+    }
+
+    // =========================================================
+    // BOTTOM STATUS BAR
+    // =========================================================
+    private HBox createBottomStatusBar() {
+        bottomStatusBar = new HBox(16);
+        bottomStatusBar.getStyleClass().add("bottom-status-bar");
+        bottomStatusBar.setAlignment(Pos.CENTER_LEFT);
+
+        bottomStatusLabel = new Label("System ready • All reconnaissance modules operational");
+        bottomStatusLabel.getStyleClass().add("bottom-status-text");
+        HBox.setHgrow(bottomStatusLabel, Priority.ALWAYS);
+
+        Label onlineIndicator = new Label("● ONLINE");
+        onlineIndicator.getStyleClass().addAll("badge", "badge-green");
+
+        Label clearance = new Label("CLEARANCE: ALPHA-RESTRICTED");
+        clearance.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px;");
+
+        bottomStatusBar.getChildren().addAll(bottomStatusLabel, clearance, onlineIndicator);
+        return bottomStatusBar;
+    }
+
+    // =========================================================
+    // PERSISTENT SIDEBAR NAVIGATION (Dark Glass Rail)
     // =========================================================
     private VBox createSidebar() {
         sidebarButtons.clear();
 
         VBox sidebar = new VBox();
         sidebar.getStyleClass().add("sidebar");
-        sidebar.setPrefWidth(270);
-        sidebar.setMinWidth(260);
+        sidebar.setPrefWidth(265);
+        sidebar.setMinWidth(250);
         sidebar.setMaxWidth(280);
         sidebar.setPadding(new Insets(18, 16, 16, 16));
         sidebar.setSpacing(4);
 
         // Classification stripe
-        Label classLabel = new Label("// RESTRICTED //");
-        classLabel.setStyle("-fx-text-fill: #DC2626; -fx-font-family: 'Consolas', monospace; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+        Label classLabel = new Label("// CLEARANCE: ALPHA-RESTRICTED //");
+        classLabel.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 1.5px;");
         classLabel.setAlignment(Pos.CENTER);
         classLabel.setMaxWidth(Double.MAX_VALUE);
 
         Region stripe = new Region();
         stripe.setPrefHeight(1);
         stripe.setMaxWidth(Double.MAX_VALUE);
-        stripe.setStyle("-fx-background-color: #1C2234;");
+        stripe.setStyle("-fx-background-color: rgba(34, 211, 238, 0.16);");
 
         Label logo = new Label("OMEN-X");
-        logo.setStyle("-fx-text-fill: #DC2626; -fx-font-family: 'Consolas', sans-serif; -fx-font-size: 24px; -fx-font-weight: bold; -fx-letter-spacing: 3px;");
+        logo.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', sans-serif; -fx-font-size: 22px; -fx-font-weight: 800; -fx-letter-spacing: 3px; -fx-effect: dropshadow(gaussian, rgba(34, 211, 238, 0.35), 14, 0.2, 0, 0);");
 
-        Label sub = new Label("TACTICAL OSINT PLATFORM");
-        sub.setStyle("-fx-text-fill: #788698; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+        Label sub = new Label("INTELLIGENCE DASHBOARD");
+        sub.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 1.5px;");
 
         VBox brand = new VBox(4, classLabel, stripe, logo, sub);
         brand.setPadding(new Insets(4, 0, 14, 6));
 
-        Label navLabel = new Label("OPERATIONS");
-        navLabel.setStyle("-fx-text-fill: #788698; -fx-font-family: 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
+        Label navLabel = new Label("MODULE NAVIGATION");
+        navLabel.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 2px;");
         navLabel.setPadding(new Insets(8, 6, 6, 6));
 
         sidebar.getChildren().addAll(brand, navLabel);
 
         addSidebarItem(sidebar, "Dashboard", "//>  Command Center", this::showDashboard);
+        addSidebarItem(sidebar, "OSIRIS", "[O]>  OSIRIS Platform", this::openOsirisLauncher);
         addSidebarItem(sidebar, "Username", "@>  Username Recognition", () -> openModule("Username"));
         addSidebarItem(sidebar, "Email", "#>  Email Exposure", () -> openModule("Email"));
         addSidebarItem(sidebar, "Domain", "::>  Domain & DNS", () -> openModule("Domain"));
@@ -268,7 +402,7 @@ public class Main extends Application {
         VBox.setVgrow(spacer, Priority.ALWAYS);
         sidebar.getChildren().add(spacer);
 
-        // Operator Connection Widget (Unclippable)
+        // Operator Connection Widget
         String rawUser = currentUsername != null ? currentUsername : "Omen-X:M1";
         String displayUser = rawUser;
         if (rawUser.contains("Member")) {
@@ -289,15 +423,18 @@ public class Main extends Application {
         HBox userHeader = new HBox(8, userLabel, onlineDot);
         userHeader.setAlignment(Pos.CENTER_LEFT);
 
-        Label statusText = new Label("+ SYSTEMS OPERATIONAL");
+        Label statusText = new Label("+ SECURE RECON GATEWAY");
         statusText.getStyleClass().add("operator-status-text");
 
         Button logoutBtn = new Button("DISCONNECT SESSION");
         logoutBtn.getStyleClass().add("btn-ghost-danger");
         logoutBtn.setMaxWidth(Double.MAX_VALUE);
         logoutBtn.setOnAction(e -> {
+            if (clockTimeline != null) clockTimeline.stop();
             currentUsername = null;
+            root.setTop(null);
             root.setLeft(null);
+            root.setBottom(null);
             root.setCenter(loginUI.createView());
         });
 
@@ -341,14 +478,14 @@ public class Main extends Application {
         }
         root.setCenter(dashboardView);
         updateSidebarActive("Dashboard");
+        setStatus("Command Center active • All intelligence modules ready", MUTED);
     }
 
     // =========================================================
-    // INVESTIGATION SCAN VIEW (Standardized with AppHeader)
+    // INVESTIGATION SCAN VIEW (Standardized with Glass Panels)
     // =========================================================
     private VBox createScanView() {
 
-        // Reusable AppHeader for Username, Email, Domain, Phone
         scanHeader = new AppHeader(
                 "@>",
                 "USERNAME RECOGNITION",
@@ -358,18 +495,19 @@ public class Main extends Application {
 
         // Module Selector Tag
         selectedTypeLabel = new Label("USERNAME");
-        selectedTypeLabel.setPrefHeight(42);
+        selectedTypeLabel.setPrefHeight(44);
         selectedTypeLabel.setMinWidth(130);
         selectedTypeLabel.setAlignment(Pos.CENTER);
         selectedTypeLabel.setStyle(
-                "-fx-background-color: " + SURFACE + ";" +
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 6px 0 0 6px;" +
-                "-fx-background-radius: 6px 0 0 6px;" +
-                "-fx-font-family: 'Consolas', monospace;" +
+                "-fx-background-color: rgba(14, 20, 32, 0.90);" +
+                "-fx-text-fill: #22D3EE;" +
+                "-fx-border-color: rgba(34, 211, 238, 0.25);" +
+                "-fx-border-radius: 8px 0 0 8px;" +
+                "-fx-background-radius: 8px 0 0 8px;" +
+                "-fx-font-family: 'JetBrains Mono', 'Consolas', monospace;" +
                 "-fx-font-size: 11px;" +
-                "-fx-font-weight: bold;"
+                "-fx-font-weight: bold;" +
+                "-fx-letter-spacing: 1px;"
         );
 
         // Target Input
@@ -377,11 +515,13 @@ public class Main extends Application {
         targetField.setPromptText("Enter target username, email or domain…");
         targetField.setPrefHeight(44);
         targetField.getStyleClass().add("cyber-input");
+        targetField.setStyle("-fx-border-radius: 0; -fx-background-radius: 0;");
         HBox.setHgrow(targetField, Priority.ALWAYS);
 
         searchButton = new Button("EXECUTE SCAN");
         searchButton.setPrefHeight(44);
         searchButton.getStyleClass().add("btn-primary");
+        searchButton.setStyle("-fx-border-radius: 0 8px 8px 0; -fx-background-radius: 0 8px 8px 0;");
         searchButton.setOnAction(e -> runScan());
         targetField.setOnAction(e -> runScan());
 
@@ -401,14 +541,14 @@ public class Main extends Application {
         exportButton.setOnAction(e -> copyResults());
 
         lastScanLabel = new Label("");
-        lastScanLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
+        lastScanLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
         HBox actionRow = new HBox(10, clearButton, exportButton, lastScanLabel);
         actionRow.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(lastScanLabel, Priority.ALWAYS);
         lastScanLabel.setAlignment(Pos.CENTER_RIGHT);
 
-        // Statistics
+        // Statistics Cards (Glass Panels)
         foundValue = new Label("0");
         notFoundValue = new Label("0");
         unknownValue = new Label("0");
@@ -416,56 +556,65 @@ public class Main extends Application {
 
         HBox stats = new HBox(
                 12,
-                createStatCard("Found", foundValue, "metric-accent-green", GREEN),
-                createStatCard("Not Found", notFoundValue, "metric-accent-red", RED),
-                createStatCard("Unknown", unknownValue, "metric-accent-amber", YELLOW),
-                createStatCard("Platforms", scannedValue, "metric-accent-red", TEXT)
+                createStatCard("Found Hits", foundValue, "metric-accent-green", GREEN),
+                createStatCard("Not Found", notFoundValue, "metric-accent-cyan", MUTED),
+                createStatCard("Unknown / Indeterminate", unknownValue, "metric-accent-amber", YELLOW),
+                createStatCard("Platforms Polled", scannedValue, "metric-accent-cyan", CYAN)
         );
 
-        // Results Header
-        Label resultsTitle = new Label("Investigation Results");
-        resultsTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+        // Results Section with Standardized Panel Header Pattern
+        HBox resultsHeader = AppHeader.createPanelHeader(
+                "◈",
+                "INVESTIGATION FINDINGS & SOURCE TRACES",
+                "READY",
+                AppHeader.StatusType.READY,
+                "0 HITS"
+        );
 
         resultsTarget = new Label("No target selected");
-        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        resultsTarget.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
-        HBox resultsHeader = new HBox(12, resultsTitle, resultsTarget);
-        resultsHeader.setAlignment(Pos.CENTER_LEFT);
+        HBox targetSubRow = new HBox(8, new Label("TARGET:"), resultsTarget);
+        targetSubRow.setAlignment(Pos.CENTER_LEFT);
+        targetSubRow.setPadding(new Insets(2, 16, 8, 16));
+        targetSubRow.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
         // Results Container
         resultsContainer = new VBox(8);
-        resultsContainer.setPadding(new Insets(4, 0, 8, 0));
+        resultsContainer.setPadding(new Insets(8, 16, 16, 16));
         resultsContainer.getChildren().add(
-                createEmptyState("Enter a target and press Execute Scan to begin investigation.")
+                createEmptyState("Enter a target above and press Execute Scan to query OSINT intelligence feeds.")
         );
 
-        resultsScroll = new ScrollPane(resultsContainer);
+        VBox resultsCardWrapper = new VBox(4, resultsHeader, targetSubRow, resultsContainer);
+        resultsCardWrapper.getStyleClass().add("glass-panel");
+
+        resultsScroll = new ScrollPane(resultsCardWrapper);
         resultsScroll.setFitToWidth(true);
         resultsScroll.getStyleClass().add("scroll-pane");
         resultsScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         resultsScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         VBox.setVgrow(resultsScroll, Priority.ALWAYS);
 
-        // Status Bar
+        // In-panel Status Bar
         statusBarLabel = new Label("Ready");
-        statusBarLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
+        statusBarLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
         HBox statusBar = new HBox(statusBarLabel);
-        statusBar.setPadding(new Insets(8, 0, 0, 0));
+        statusBar.setPadding(new Insets(6, 0, 0, 0));
         statusBar.setStyle("-fx-border-color: " + BORDER + " transparent transparent transparent; -fx-border-width: 1 0 0 0;");
 
         VBox content = new VBox(
-                18,
+                16,
                 scanHeader,
                 searchBar,
                 actionRow,
                 stats,
-                resultsHeader,
                 resultsScroll,
                 statusBar
         );
 
-        content.setPadding(new Insets(20, 28, 20, 28));
+        content.setPadding(new Insets(20, 26, 20, 26));
         content.setStyle("-fx-background-color: " + BG + ";");
         VBox.setVgrow(resultsScroll, Priority.ALWAYS);
 
@@ -480,11 +629,13 @@ public class Main extends Application {
 
         if ("Malware Analysis".equals(type)) {
             root.setCenter(malwareAnalysisUI.getView());
+            setStatus("Malware Threat Analysis workspace active", MUTED);
             return;
         }
 
         if ("IP Address".equals(type)) {
             root.setCenter(ipAddressUI.createView());
+            setStatus("IP Geolocation workspace active", MUTED);
             return;
         }
 
@@ -495,25 +646,25 @@ public class Main extends Application {
             case "Email" -> {
                 scanHeader.setHeaderIcon("#>");
                 scanHeader.setHeaderTitle("EMAIL EXPOSURE");
-                scanHeader.setHeaderSubtitle("Check breach records, domain validity & email account deliverability");
-                targetField.setPromptText("Enter email address…");
+                scanHeader.setHeaderSubtitle("Check breach records, domain validity & email deliverability");
+                targetField.setPromptText("Enter email address (e.g. user@target.com)…");
             }
             case "Domain" -> {
                 scanHeader.setHeaderIcon("::>");
                 scanHeader.setHeaderTitle("DOMAIN & DNS INTEL");
                 scanHeader.setHeaderSubtitle("Analyze WHOIS records, DNS routing & active subdomains");
-                targetField.setPromptText("Enter domain name…");
+                targetField.setPromptText("Enter domain name (e.g. example.com)…");
             }
             case "Phone" -> {
                 scanHeader.setHeaderIcon("{}>");
                 scanHeader.setHeaderTitle("PHONE INTEL");
-                scanHeader.setHeaderSubtitle("Carrier info, validity, geographic area & telecom metadata");
-                targetField.setPromptText("Enter phone number…");
+                scanHeader.setHeaderSubtitle("Carrier metadata, validity, geographic area & telecom routing");
+                targetField.setPromptText("Enter phone number with country code (e.g. +14155552671)…");
             }
             default -> {
                 scanHeader.setHeaderIcon("@>");
                 scanHeader.setHeaderTitle("USERNAME RECOGNITION");
-                scanHeader.setHeaderSubtitle("Search 500+ public platforms & social profiles");
+                scanHeader.setHeaderSubtitle("Search 500+ public platforms & social profiles for traces");
                 targetField.setPromptText("Enter username…");
             }
         }
@@ -523,21 +674,31 @@ public class Main extends Application {
         clearResults();
         root.setCenter(scanView);
         targetField.requestFocus();
+        setStatus(type + " workspace active • Enter target to scan", MUTED);
     }
 
     private void openImageMetadata() {
         updateSidebarActive("EXIF Metadata");
         root.setCenter(imageMetadataUI.createView());
+        setStatus("EXIF Metadata & GPS forensics workspace active", MUTED);
     }
 
     private void openReverseImageScanner() {
         updateSidebarActive("Reverse Image");
         root.setCenter(reverseImageUI.createView());
+        setStatus("Reverse Image intelligence workspace active", MUTED);
     }
 
     private void openMalwareAnalysis() {
         updateSidebarActive("Malware Analysis");
         root.setCenter(malwareAnalysisUI.getView());
+        setStatus("Malware Threat Analysis workspace active", MUTED);
+    }
+
+    private void openOsirisLauncher() {
+        updateSidebarActive("OSIRIS");
+        root.setCenter(osirisLauncherUI.getView());
+        setStatus("OSIRIS Global OSINT Platform • 3D Surveillance & Reconnaissance Engine", MUTED);
     }
 
     // =========================================================
@@ -557,11 +718,11 @@ public class Main extends Application {
 
         searchButton.setDisable(true);
         searchButton.setText("Scanning…");
-        setStatus("Scanning " + target + "…", GREEN);
+        setStatus("Scanning " + target + " across open sources…", CYAN);
         scanHeader.setStatus(AppHeader.StatusType.SCANNING, "SCANNING " + target);
 
         resultsContainer.getChildren().clear();
-        resultsContainer.getChildren().add(createEmptyState("Analyzing publicly available sources…"));
+        resultsContainer.getChildren().add(createEmptyState("Analyzing publicly available intelligence feeds…"));
 
         resultsTarget.setText(target);
         foundValue.setText("0");
@@ -591,7 +752,7 @@ public class Main extends Application {
                     scanResults.put("Phone Intelligence", buildPhoneResult(phoneResult));
                 } else {
                     scanResults = new LinkedHashMap<>();
-                    scanResults.put(type + " Intelligence", "UNKNOWN | This intelligence module is not fully connected yet.");
+                    scanResults.put(type + " Intelligence", "UNKNOWN | Intelligence module not fully connected.");
                 }
             } catch (Exception ex) {
                 scanResults = new LinkedHashMap<>();
@@ -644,7 +805,6 @@ public class Main extends Application {
                         unknown++;
                     }
 
-                    // Route to specialized card renderers for Email and Phone
                     if ("Email Intelligence".equals(platform)) {
                         resultsContainer.getChildren().add(createEmailResultCard(platform, result));
                     } else if ("Phone Intelligence".equals(platform)) {
@@ -671,13 +831,13 @@ public class Main extends Application {
 
         lastScanLabel.setText("Last scan  •  " + time);
         setStatus(
-                scanFailed ? "Scan failed  •  check the target" : "Scan complete  •  " + found + " findings identified",
+                scanFailed ? "Scan failed  •  check target domain" : "Scan complete  •  " + found + " findings identified",
                 scanFailed ? RED : GREEN
         );
 
         scanHeader.setStatus(
                 scanFailed ? AppHeader.StatusType.ERROR : AppHeader.StatusType.READY,
-                scanFailed ? "FAILED" : "COMPLETE"
+                scanFailed ? "FAILED" : "COMPLETE (" + found + ")"
         );
     }
 
@@ -730,18 +890,18 @@ public class Main extends Application {
         }
 
         Label key = new Label(label);
-        key.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px; -fx-font-weight: bold;");
+        key.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
         key.setMinWidth(140);
 
         Label val = new Label(value);
-        val.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
+        val.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
         val.setWrapText(true);
         HBox.setHgrow(val, Priority.ALWAYS);
 
         HBox row = new HBox(16, key, val);
         row.setAlignment(Pos.TOP_LEFT);
         row.setPadding(new Insets(10, 16, 10, 16));
-        row.getStyleClass().add("cyber-card");
+        row.getStyleClass().add("activity-row");
 
         resultsContainer.getChildren().add(row);
     }
@@ -792,18 +952,20 @@ public class Main extends Application {
     private void setStatus(String text, String color) {
         if (statusBarLabel != null) {
             statusBarLabel.setText(text);
-            statusBarLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-size: 11px;");
+            statusBarLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+        }
+        if (bottomStatusLabel != null) {
+            bottomStatusLabel.setText(text);
+            bottomStatusLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px;");
         }
     }
 
     // =========================================================
     // EMAIL RESULT CARD
-    // Structured card renderer for EMAIL_RESULT: format strings.
     // =========================================================
     private VBox createEmailResultCard(String platform, String result) {
         if (result == null) result = "UNKNOWN | EMAIL_RESULT:\nstatus: UNKNOWN\ntarget: —";
 
-        // Strip classification prefix
         String body = result;
         String classification = "UNKNOWN";
         if (result.startsWith("FOUND | ")) {
@@ -816,7 +978,6 @@ public class Main extends Application {
             body = result.substring("UNKNOWN | ".length());
         }
 
-        // Parse structured key:value lines
         String target = "—";
         String status = "—";
         String details = null;
@@ -827,12 +988,9 @@ public class Main extends Application {
             else if (line.startsWith("details: ")) details = line.substring(9);
         }
 
-        // Build outer card
         VBox card = new VBox(0);
-        card.getStyleClass().add("cyber-card");
-        card.setStyle("-fx-background-color: " + PANEL + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8px; -fx-background-radius: 8px;");
+        card.getStyleClass().add("glass-panel");
 
-        // ── Card Header: platform name + status badge ──
         String badgeText;
         String badgeClass;
         if ("FOUND".equals(classification)) {
@@ -847,7 +1005,7 @@ public class Main extends Application {
         }
 
         Label platformLabel = new Label(platform);
-        platformLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        platformLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
 
         Label badge = new Label(badgeText);
         badge.getStyleClass().addAll("badge", badgeClass);
@@ -855,20 +1013,18 @@ public class Main extends Application {
         HBox cardHeader = new HBox(12, platformLabel, badge);
         cardHeader.setAlignment(Pos.CENTER_LEFT);
         cardHeader.setPadding(new Insets(12, 16, 12, 16));
-        cardHeader.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
+        cardHeader.setStyle("-fx-border-color: transparent transparent rgba(34, 211, 238, 0.16) transparent; -fx-border-width: 0 0 1 0;");
         card.getChildren().add(cardHeader);
 
-        // ── Card Body: labeled rows ──
         VBox body_vbox = new VBox(10);
         body_vbox.setPadding(new Insets(12, 16, 14, 16));
         body_vbox.getChildren().add(createInfoRow("TARGET", target));
         body_vbox.getChildren().add(createInfoRow("BREACH STATUS", status));
 
-        // ── Breach pill tags ──
         if (details != null && !details.isBlank() && "FOUND".equals(classification)) {
             String[] breachNames = details.split("\\|");
             Label breachTitle = new Label("KNOWN BREACHES  (" + breachNames.length + ")");
-            breachTitle.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px; -fx-padding: 6 0 2 0;");
+            breachTitle.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px; -fx-padding: 6 0 2 0;");
 
             javafx.scene.layout.FlowPane tags = new javafx.scene.layout.FlowPane(8, 6);
             for (String name : breachNames) {
@@ -876,37 +1032,33 @@ public class Main extends Application {
                 if (name.isEmpty()) continue;
                 Label tag = new Label(name);
                 tag.setStyle(
-                        "-fx-background-color: #35191E;" +
-                        "-fx-text-fill: #EF4444;" +
-                        "-fx-font-size: 11px;" +
+                        "-fx-background-color: rgba(239, 68, 68, 0.16);" +
+                        "-fx-text-fill: #F87171;" +
+                        "-fx-border-color: rgba(239, 68, 68, 0.35);" +
+                        "-fx-border-radius: 4px;" +
+                        "-fx-background-radius: 4px;" +
+                        "-fx-font-family: 'JetBrains Mono', 'Consolas', monospace;" +
+                        "-fx-font-size: 10px;" +
                         "-fx-font-weight: bold;" +
-                        "-fx-padding: 3 10 3 10;" +
-                        "-fx-background-radius: 4px;"
+                        "-fx-padding: 3 8 3 8;"
                 );
                 tags.getChildren().add(tag);
             }
             body_vbox.getChildren().addAll(breachTitle, tags);
         } else if (details != null && !details.isBlank()) {
-            // Show plain details for error/note cases
             body_vbox.getChildren().add(createInfoRow("NOTE", details));
         }
 
         card.getChildren().add(body_vbox);
-
-        card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: " + SURFACE_2 + "; -fx-border-color: " + BORDER_SOFT + "; -fx-border-radius: 8px; -fx-background-radius: 8px;"));
-        card.setOnMouseExited(e ->  card.setStyle("-fx-background-color: " + PANEL + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8px; -fx-background-radius: 8px;"));
-
         return card;
     }
 
     // =========================================================
     // PHONE RESULT CARD
-    // Structured card renderer for PHONE_RESULT: format strings.
     // =========================================================
     private VBox createPhoneResultCard(String platform, String result) {
         if (result == null) result = "UNKNOWN | PHONE_RESULT:\nnote: No data.";
 
-        // Strip classification prefix
         String body = result;
         String classification = "FOUND";
         if (result.startsWith("FOUND | ")) {
@@ -920,15 +1072,13 @@ public class Main extends Application {
         }
 
         VBox card = new VBox(0);
-        card.getStyleClass().add("cyber-card");
-        card.setStyle("-fx-background-color: " + PANEL + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8px; -fx-background-radius: 8px;");
+        card.getStyleClass().add("glass-panel");
 
-        // ── Card Header ──
-        String badgeText = "FOUND".equals(classification) ? "DATA FOUND" : classification;
+        String badgeText = "FOUND".equals(classification) ? "DATA IDENTIFIED" : classification;
         String badgeClass = "FOUND".equals(classification) ? "badge-green" : "badge-amber";
 
         Label platformLabel = new Label(platform);
-        platformLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        platformLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
 
         Label badge = new Label(badgeText);
         badge.getStyleClass().addAll("badge", badgeClass);
@@ -936,10 +1086,9 @@ public class Main extends Application {
         HBox cardHeader = new HBox(12, platformLabel, badge);
         cardHeader.setAlignment(Pos.CENTER_LEFT);
         cardHeader.setPadding(new Insets(12, 16, 12, 16));
-        cardHeader.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
+        cardHeader.setStyle("-fx-border-color: transparent transparent rgba(34, 211, 238, 0.16) transparent; -fx-border-width: 0 0 1 0;");
         card.getChildren().add(cardHeader);
 
-        // ── Card Body: parse sections and fields ──
         VBox bodyBox = new VBox(0);
         bodyBox.setPadding(new Insets(8, 16, 14, 16));
 
@@ -951,8 +1100,8 @@ public class Main extends Application {
             if (line.startsWith("section: ")) {
                 String sectionName = line.substring(9);
                 Label sectionTitle = new Label(sectionName);
-                sectionTitle.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px; -fx-padding: 10 0 4 0;");
-                currentSection = new VBox(8);
+                sectionTitle.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px; -fx-padding: 10 0 4 0;");
+                currentSection = new VBox(6);
                 currentSection.getChildren().add(sectionTitle);
                 bodyBox.getChildren().add(currentSection);
 
@@ -965,30 +1114,26 @@ public class Main extends Application {
 
             } else if (line.startsWith("note: ")) {
                 Label noteLabel = new Label(line.substring(6));
-                noteLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+                noteLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
                 noteLabel.setWrapText(true);
                 bodyBox.getChildren().add(noteLabel);
             }
         }
 
         card.getChildren().add(bodyBox);
-
-        card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: " + SURFACE_2 + "; -fx-border-color: " + BORDER_SOFT + "; -fx-border-radius: 8px; -fx-background-radius: 8px;"));
-        card.setOnMouseExited(e ->  card.setStyle("-fx-background-color: " + PANEL + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8px; -fx-background-radius: 8px;"));
-
         return card;
     }
 
     // =========================================================
-    // INFO ROW — shared labeled-row helper
+    // INFO ROW
     // =========================================================
     private HBox createInfoRow(String label, String value) {
         Label keyLabel = new Label(label);
         keyLabel.setMinWidth(160);
-        keyLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px; -fx-font-weight: bold; -fx-letter-spacing: 0.5px;");
+        keyLabel.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 0.5px;");
 
         Label valueLabel = new Label(value == null || value.isBlank() ? "—" : value);
-        valueLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px;");
+        valueLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
         valueLabel.setWrapText(true);
         HBox.setHgrow(valueLabel, Priority.ALWAYS);
 
@@ -1004,76 +1149,73 @@ public class Main extends Application {
         if (result == null) result = "UNKNOWN";
 
         Label platformLabel = new Label(platform);
-        platformLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        platformLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold;");
 
         Label statusLabel = new Label();
         String url = null;
 
         if (result.startsWith("FOUND |")) {
             statusLabel.setText("Found");
-            statusLabel.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px; -fx-font-weight: bold;");
+            statusLabel.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
             url = result.substring("FOUND |".length()).trim();
         } else if (result.startsWith("NOT FOUND")) {
             statusLabel.setText("Not found");
-            statusLabel.setStyle("-fx-text-fill: " + RED + "; -fx-font-size: 12px;");
+            statusLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
         } else {
-            statusLabel.setText("Unknown");
-            statusLabel.setStyle("-fx-text-fill: " + YELLOW + "; -fx-font-size: 12px;");
+            statusLabel.setText("Indeterminate");
+            statusLabel.setStyle("-fx-text-fill: " + YELLOW + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
         }
 
-        VBox left = new VBox(3, platformLabel, statusLabel);
+        VBox left = new VBox(2, platformLabel, statusLabel);
 
         HBox row = new HBox(16);
         row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(12, 16, 12, 16));
-        row.getStyleClass().add("cyber-card");
+        row.setPadding(new Insets(10, 16, 10, 16));
+        row.getStyleClass().add("activity-row");
         row.getChildren().add(left);
 
         if (url != null && !url.isBlank()) {
             final String targetUrl = url;
             Hyperlink link = new Hyperlink(targetUrl);
-            link.setStyle("-fx-text-fill: #EF4444; -fx-font-size: 12px;");
+            link.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
             link.setOnAction(e -> openUrl(targetUrl));
             row.getChildren().add(link);
             HBox.setHgrow(link, Priority.ALWAYS);
         } else if (!result.startsWith("FOUND") && !result.startsWith("NOT FOUND")) {
             String details = result.contains("|") ? result.split("\\|", 2)[1].trim() : result;
             Label detailsLabel = new Label(details);
-            detailsLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+            detailsLabel.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
             detailsLabel.setWrapText(true);
             row.getChildren().add(detailsLabel);
         }
-
-        row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: " + SURFACE_2 + "; -fx-border-color: " + BORDER_SOFT + "; -fx-border-radius: 8px; -fx-background-radius: 8px;"));
-        row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + PANEL + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8px; -fx-background-radius: 8px;"));
 
         return new VBox(row);
     }
 
     private Label createSectionHeader(String title) {
-        Label header = new Label(title);
-        header.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold; -fx-padding: 16 0 6 2; -fx-letter-spacing: 1px;");
+        Label header = new Label("// " + title.toUpperCase() + " //");
+        header.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold; -fx-padding: 14 0 4 2; -fx-letter-spacing: 1.5px;");
         return header;
     }
 
     private Label createEmptyState(String text) {
         Label label = new Label(text);
-        label.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
-        label.setPadding(new Insets(28, 0, 20, 0));
+        label.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
+        label.setPadding(new Insets(24, 0, 16, 0));
         return label;
     }
 
     private VBox createStatCard(String title, Label value, String accentClass, String accentColor) {
         Label t = new Label(title.toUpperCase());
-        t.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
+        t.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 9px; -fx-font-weight: bold; -fx-letter-spacing: 1px;");
 
-        value.setStyle("-fx-text-fill: " + accentColor + "; -fx-font-size: 22px; -fx-font-weight: bold;");
+        value.setStyle("-fx-text-fill: " + accentColor + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 22px; -fx-font-weight: 800;");
 
         VBox card = new VBox(4, t, value);
         card.setPadding(new Insets(12, 16, 12, 16));
         card.setPrefWidth(140);
         card.setMaxWidth(Double.MAX_VALUE);
-        card.getStyleClass().addAll("cyber-card", accentClass);
+        card.getStyleClass().addAll("glass-panel", accentClass);
 
         return card;
     }

@@ -4,14 +4,17 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 // =========================================================
-// OMEN-X REUSABLE APP HEADER COMPONENT
-// Standardized across all 8 modules, Dashboard, and views
+// OMEN-X REUSABLE APP HEADER & PANEL HEADER COMPONENT
+// Follows the OSIRIS standardized panel header pattern:
+// Icon + Uppercase Title (letter-spaced) + Live Status Dot
+// + Secondary Stat + Expand / Action Glyphs
 // =========================================================
 public class AppHeader extends HBox {
 
@@ -28,6 +31,7 @@ public class AppHeader extends HBox {
     private final Label subtitleLabel;
     private final Label statusPill;
     private final Button backButton;
+    private final Label expandIcon;
     private final HBox rightBox;
 
     public AppHeader(String iconBracket, String title, String subtitle, Runnable backAction) {
@@ -71,10 +75,66 @@ public class AppHeader extends HBox {
         backButton.setVisible(showBackButton);
         backButton.setManaged(showBackButton);
 
-        rightBox = new HBox(12, statusPill, backButton);
+        expandIcon = new Label("⤢");
+        expandIcon.getStyleClass().add("panel-action-icon");
+        expandIcon.setTooltip(new Tooltip("Active intelligence workspace"));
+
+        rightBox = new HBox(12, statusPill, backButton, expandIcon);
         rightBox.setAlignment(Pos.CENTER_RIGHT);
 
         this.getChildren().addAll(titleBlock, rightBox);
+    }
+
+    // ── Factory: Reusable Inner Panel Header Pattern ──
+    public static HBox createPanelHeader(String iconBracket, String title, String statusText, StatusType statusType, String secondaryStat) {
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(12, 16, 12, 16));
+        header.setStyle("-fx-border-color: transparent transparent rgba(34, 211, 238, 0.16) transparent; -fx-border-width: 0 0 1 0;");
+
+        Label icon = new Label(iconBracket != null ? iconBracket + " " : "");
+        icon.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 13px; -fx-font-weight: bold;");
+
+        Label titleLbl = new Label(title != null ? title.toUpperCase() : "");
+        titleLbl.setStyle("-fx-text-fill: #F1F5F9; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: 800; -fx-letter-spacing: 1.5px;");
+
+        HBox left = new HBox(4, icon, titleLbl);
+        left.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(left, Priority.ALWAYS);
+
+        header.getChildren().add(left);
+
+        if (statusText != null && !statusText.isBlank()) {
+            Label dot = new Label("● " + statusText.toUpperCase());
+            dot.getStyleClass().add("badge");
+            if (statusType == StatusType.ERROR) {
+                dot.getStyleClass().add("badge-red");
+            } else if (statusType == StatusType.WARNING) {
+                dot.getStyleClass().add("badge-amber");
+            } else if (statusType == StatusType.SCANNING) {
+                dot.getStyleClass().add("badge-cyan");
+            } else {
+                dot.getStyleClass().add("badge-green");
+            }
+            header.getChildren().add(dot);
+        }
+
+        if (secondaryStat != null && !secondaryStat.isBlank()) {
+            Label statBadge = new Label(secondaryStat.toUpperCase());
+            statBadge.getStyleClass().addAll("badge", "badge-cyan");
+            header.getChildren().add(statBadge);
+        }
+
+        Label expand = new Label("⤢");
+        expand.getStyleClass().add("panel-action-icon");
+        expand.setTooltip(new Tooltip("Panel view options"));
+
+        Label chevron = new Label("⌄");
+        chevron.getStyleClass().add("panel-action-icon");
+        chevron.setTooltip(new Tooltip("Collapse / Expand"));
+
+        header.getChildren().addAll(expand, chevron);
+        return header;
     }
 
     // ── Status Management ──
@@ -106,8 +166,8 @@ public class AppHeader extends HBox {
 
     public void addExtraPill(Label extraBadge) {
         if (extraBadge != null) {
-            // Insert before statusPill or backButton
-            rightBox.getChildren().add(0, extraBadge);
+            int insertIndex = Math.max(0, rightBox.getChildren().indexOf(statusPill));
+            rightBox.getChildren().add(insertIndex, extraBadge);
         }
     }
 

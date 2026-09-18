@@ -26,27 +26,16 @@ import java.util.concurrent.Executors;
 
 // =========================================================
 // REVERSE IMAGE UI
-// Tactical Visual Reconnaissance & Reverse Image Intelligence
+// Dark Glassmorphic Visual Reconnaissance & Reverse Image Intelligence
 // =========================================================
-
 public class ReverseImageUI {
 
-    // =========================================================
-    // COLORS (Tactical Crimson Unified)
-    // =========================================================
-
-    private static final String BG      = "#090C12";
-    private static final String PANEL   = "#111520";
-    private static final String SURFACE = "#141824";
-    private static final String BORDER  = "#1C2234";
+    private static final String BG      = "#060810";
     private static final String TEXT    = "#F1F5F9";
-    private static final String MUTED   = "#788698";
-    private static final String GREEN   = "#22C55E";
-    private static final String RED     = "#DC2626";
-
-    // =========================================================
-    // ACTIONS & SERVICES
-    // =========================================================
+    private static final String MUTED   = "#64748B";
+    private static final String CYAN    = "#22D3EE";
+    private static final String GREEN   = "#10B981";
+    private static final String RED     = "#EF4444";
 
     private final Runnable backAction;
     private final ScanService scanService;
@@ -57,10 +46,6 @@ public class ReverseImageUI {
 
     private AppHeader header;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
-
     public ReverseImageUI(
             Runnable backAction,
             ScanService scanService
@@ -70,10 +55,6 @@ public class ReverseImageUI {
         this.scanner = new ReverseImageScanner();
     }
 
-    // =========================================================
-    // CREATE VIEW
-    // =========================================================
-
     public BorderPane createView() {
 
         BorderPane root = new BorderPane();
@@ -82,8 +63,8 @@ public class ReverseImageUI {
         // ── Standardized Header ──
         header = new AppHeader(
                 ">>",
-                "REVERSE IMAGE",
-                "Identify identical and visually matching imagery across search engines",
+                "REVERSE IMAGE SEARCH",
+                "Identify identical, visually matching imagery & source domains across search engines",
                 backAction
         );
         root.setTop(header);
@@ -95,7 +76,7 @@ public class ReverseImageUI {
         preview.setPreserveRatio(true);
 
         Label fileName = new Label("No image selected");
-        fileName.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        fileName.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
         VBox imagePreview = new VBox(10, preview, fileName);
         imagePreview.setAlignment(Pos.CENTER);
@@ -117,104 +98,150 @@ public class ReverseImageUI {
         buttons.setAlignment(Pos.CENTER_LEFT);
 
         // ── Status ──
-        Label status = new Label("Ready — select an image file to begin.");
-        status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        Label status = new Label("Ready — select an image file to begin reverse visual search.");
+        status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
-        // ── Results Header ──
-        Label resultsTitle = new Label("Search Results");
-        resultsTitle.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 14px; -fx-font-weight: bold;");
+        // ── Results Header Pattern ──
+        HBox resultsHeader = AppHeader.createPanelHeader(
+                "◈",
+                "REVERSE IMAGE MATCHES & CITATIONS",
+                "READY",
+                AppHeader.StatusType.READY,
+                "0 MATCHES"
+        );
 
         Label resultCount = new Label("0 matches");
-        resultCount.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
+        resultCount.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
-        HBox resultsHeader = new HBox(12, resultsTitle, resultCount);
-        resultsHeader.setAlignment(Pos.CENTER_LEFT);
+        // ── Results Box ──
+        VBox resultsBox = new VBox(12);
+        resultsBox.setPadding(new Insets(8, 16, 16, 16));
 
-        // ── Results Container ──
-        VBox results = new VBox(12);
-        results.setPadding(new Insets(4));
+        Label placeholder = new Label("Upload an image and run search to see visually matching web results.");
+        placeholder.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
+        resultsBox.getChildren().add(placeholder);
 
-        ScrollPane scrollPane = new ScrollPane(results);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.getStyleClass().add("scroll-pane");
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        VBox resultsCardWrapper = new VBox(4, resultsHeader, resultsBox);
+        resultsCardWrapper.getStyleClass().add("glass-panel");
 
-        final File[] selectedImage = new File[1];
+        ScrollPane scroll = new ScrollPane(resultsCardWrapper);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scroll.getStyleClass().add("scroll-pane");
+        VBox.setVgrow(scroll, Priority.ALWAYS);
 
+        // ── Engine Quick Links ──
+        Label engineLabel = new Label("// QUICK ENGINE REDIRECTS //");
+        engineLabel.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1.5px;");
+
+        Button googleButton = createEngineButton("Google Images", "https://images.google.com");
+        Button yandexButton = createEngineButton("Yandex Visual", "https://yandex.com/images");
+        Button bingButton   = createEngineButton("Bing Visual", "https://www.bing.com/visualsearch");
+        Button tinEyeButton = createEngineButton("TinEye", "https://tineye.com");
+
+        HBox engineRow = new HBox(10, engineLabel, googleButton, yandexButton, bingButton, tinEyeButton);
+        engineRow.setAlignment(Pos.CENTER_LEFT);
+        engineRow.setPadding(new Insets(10, 16, 10, 16));
+        engineRow.getStyleClass().add("glass-panel");
+
+        // ── Selected File Reference ──
+        final File[] chosenFile = {null};
+
+        // File Chooser Handler
         selectButton.setOnAction(e -> {
             FileChooser chooser = new FileChooser();
             chooser.setTitle("Select Image for Reverse Search");
             chooser.getExtensionFilters().add(
                     new FileChooser.ExtensionFilter(
-                            "Image Files",
-                            "*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp", "*.bmp"
+                            "Images (*.png, *.jpg, *.jpeg, *.webp)",
+                            "*.png", "*.jpg", "*.jpeg", "*.webp"
                     )
             );
 
             File file = chooser.showOpenDialog(root.getScene().getWindow());
-            if (file == null) return;
+            if (file != null) {
+                chosenFile[0] = file;
+                fileName.setText(file.getName() + "  (" + (file.length() / 1024) + " KB)");
+                searchButton.setDisable(false);
+                status.setText("Image loaded: " + file.getName() + " — ready to execute reverse search.");
+                status.setStyle("-fx-text-fill: " + CYAN + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
-            selectedImage[0] = file;
-
-            try {
-                Image image = new Image(file.toURI().toString(), 220, 160, true, true);
-                preview.setImage(image);
-            } catch (Exception ex) {
-                preview.setImage(null);
+                try {
+                    preview.setImage(new Image(file.toURI().toString()));
+                } catch (Exception ex) {
+                    status.setText("Could not preview image: " + ex.getMessage());
+                    status.setStyle("-fx-text-fill: " + RED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+                }
             }
-
-            fileName.setText(file.getName());
-            status.setText("Image selected — ready to search");
-            status.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px;");
-            header.setStatus(AppHeader.StatusType.READY, "IMAGE LOADED");
-            searchButton.setDisable(false);
-            results.getChildren().clear();
-            resultCount.setText("0 matches");
         });
 
-        // ── Search Action ──
+        // Search Action
         searchButton.setOnAction(e -> {
-            File file = selectedImage[0];
-            if (file == null) {
-                status.setText("Please select an image first.");
-                return;
-            }
+            if (chosenFile[0] == null) return;
 
             searchButton.setDisable(true);
             selectButton.setDisable(true);
-            status.setText("Uploading image and searching the Internet...");
-            status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
-            header.setStatus(AppHeader.StatusType.SCANNING, "SEARCHING ENGINES");
+            status.setText("Searching Google Images lens index for visually matching results…");
+            status.setStyle("-fx-text-fill: " + CYAN + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+            header.setStatus(AppHeader.StatusType.SCANNING, "SEARCHING LENS");
 
-            results.getChildren().clear();
-            resultCount.setText("Searching...");
+            resultsBox.getChildren().clear();
+            Label searching = new Label("Querying reverse visual index across search providers…");
+            searching.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
+            resultsBox.getChildren().add(searching);
 
             executor.submit(() -> {
                 try {
-                    List<ReverseImageScanner.Match> matches = scanner.scan(file);
+                    List<ReverseImageScanner.Match> matches =
+                            scanner.scan(chosenFile[0]);
 
                     Platform.runLater(() -> {
-                        renderResults(results, resultCount, status, matches);
-                        scanService.saveScan(
-                                "Reverse Image",
-                                file.getName(),
-                                matches.size(),
-                                java.time.LocalTime.now().format(
-                                        java.time.format.DateTimeFormatter.ofPattern("HH:mm")
-                                )
-                        );
+                        resultsBox.getChildren().clear();
                         searchButton.setDisable(false);
                         selectButton.setDisable(false);
-                        header.setStatus(AppHeader.StatusType.READY, "COMPLETE");
+
+                        if (matches.isEmpty()) {
+                            Label noResults = new Label("No matching results found across search engines for this image.");
+                            noResults.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
+                            resultsBox.getChildren().add(noResults);
+                            resultCount.setText("0 matches");
+                            status.setText("Search completed — 0 matches identified.");
+                            status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+                            header.setStatus(AppHeader.StatusType.READY, "0 MATCHES");
+                        } else {
+                            resultCount.setText(matches.size() + " matches");
+                            status.setText("Search complete — " + matches.size() + " visually matching results identified.");
+                            status.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+                            header.setStatus(AppHeader.StatusType.READY, matches.size() + " MATCHES");
+
+                            int rank = 1;
+                            for (ReverseImageScanner.Match m : matches) {
+                                resultsBox.getChildren().add(createMatchCard(m, rank++));
+                            }
+                        }
+
+                        if (scanService != null && chosenFile[0] != null) {
+                            scanService.saveScan(
+                                    "Reverse Image",
+                                    chosenFile[0].getName(),
+                                    matches.size(),
+                                    java.time.LocalTime.now().format(
+                                            java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                                    )
+                            );
+                        }
                     });
 
                 } catch (Exception ex) {
                     Platform.runLater(() -> {
-                        status.setText("Search failed: " + cleanError(ex.getMessage()));
-                        status.setStyle("-fx-text-fill: " + RED + "; -fx-font-size: 12px;");
-                        resultCount.setText("Search failed");
-                        header.setStatus(AppHeader.StatusType.ERROR, "FAILED");
+                        resultsBox.getChildren().clear();
+                        Label errorLabel = new Label("Error executing reverse search: " + cleanError(ex.getMessage()));
+                        errorLabel.setStyle("-fx-text-fill: " + RED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px;");
+                        resultsBox.getChildren().add(errorLabel);
+                        status.setText("Reverse image search failed: " + cleanError(ex.getMessage()));
+                        status.setStyle("-fx-text-fill: " + RED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+                        header.setStatus(AppHeader.StatusType.ERROR, "ERROR");
                         searchButton.setDisable(false);
                         selectButton.setDisable(false);
                     });
@@ -222,69 +249,29 @@ public class ReverseImageUI {
             });
         });
 
-        VBox imagePanel = new VBox(
-                14,
-                imagePreview,
-                buttons,
-                status
-        );
-        imagePanel.setPadding(new Insets(18));
-        imagePanel.getStyleClass().add("cyber-card");
-
         VBox content = new VBox(
                 16,
-                imagePanel,
-                resultsHeader,
-                scrollPane
+                imagePreview,
+                buttons,
+                status,
+                engineRow,
+                scroll
         );
-
-        content.setPadding(new Insets(20, 28, 28, 28));
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        content.setPadding(new Insets(20, 26, 26, 26));
 
         root.setCenter(content);
         return root;
     }
 
-    // =========================================================
-    // RENDER RESULTS
-    // =========================================================
-
-    private void renderResults(
-            VBox results,
-            Label resultCount,
-            Label status,
-            List<ReverseImageScanner.Match> matches
-    ) {
-        results.getChildren().clear();
-
-        if (matches == null || matches.isEmpty()) {
-            resultCount.setText("0 matches");
-            status.setText("Search completed — no visually similar results found.");
-            status.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
-
-            Label empty = new Label("No matching images were returned.");
-            empty.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 13px;");
-            empty.setPadding(new Insets(25));
-            results.getChildren().add(empty);
-            return;
-        }
-
-        resultCount.setText(matches.size() + " matches");
-        status.setText("Search completed successfully.");
-        status.setStyle("-fx-text-fill: " + GREEN + "; -fx-font-size: 12px;");
-
-        int rank = 1;
-        for (ReverseImageScanner.Match match : matches) {
-            results.getChildren().add(createResultCard(rank, match));
-            rank++;
-        }
+    private Button createEngineButton(String name, String url) {
+        Button btn = new Button(name + "  ↗");
+        btn.getStyleClass().add("btn-ghost");
+        btn.setStyle("-fx-padding: 5 12 5 12; -fx-font-size: 10px;");
+        btn.setOnAction(e -> openUrl(url));
+        return btn;
     }
 
-    // =========================================================
-    // RESULT CARD
-    // =========================================================
-
-    private HBox createResultCard(int rank, ReverseImageScanner.Match match) {
+    private HBox createMatchCard(ReverseImageScanner.Match match, int rank) {
         ImageView imageView = new ImageView();
         imageView.setFitWidth(130);
         imageView.setFitHeight(100);
@@ -306,7 +293,7 @@ public class ReverseImageUI {
         imageBox.setPrefWidth(140);
 
         Label rankLabel = new Label("#" + rank);
-        rankLabel.setStyle("-fx-text-fill: #DC2626; -fx-font-family: 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
+        rankLabel.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
 
         String title = match.getTitle();
         if (title == null || title.isBlank()) {
@@ -315,7 +302,7 @@ public class ReverseImageUI {
 
         Label titleLabel = new Label(title);
         titleLabel.setWrapText(true);
-        titleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
+        titleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 12px; -fx-font-weight: bold;");
 
         String domain = match.getDomain();
         if (domain == null || domain.isBlank()) {
@@ -323,12 +310,12 @@ public class ReverseImageUI {
         }
 
         Label domainLabel = new Label(domain == null ? "" : domain);
-        domainLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
+        domainLabel.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px;");
 
         Label linkLabel = new Label(match.getLink());
         linkLabel.setWrapText(true);
         linkLabel.setMaxWidth(600);
-        linkLabel.setStyle("-fx-text-fill: #EF4444; -fx-font-size: 11px;");
+        linkLabel.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
 
         Button openButton = new Button("Open Source  →");
         openButton.getStyleClass().add("btn-accent");
@@ -347,9 +334,9 @@ public class ReverseImageUI {
 
         HBox card = new HBox(18, imageBox, details);
         card.setAlignment(Pos.TOP_LEFT);
-        card.setPadding(new Insets(16));
+        card.setPadding(new Insets(14, 16, 14, 16));
         card.setMaxWidth(Double.MAX_VALUE);
-        card.getStyleClass().add("cyber-card");
+        card.getStyleClass().add("activity-row");
 
         return card;
     }

@@ -1,36 +1,29 @@
 package com.omenx.ui;
 
 import com.omenx.model.ScanRecord;
-
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 // =========================================================
-// OMEN-X DASHBOARD UI
-// Futuristic OSINT dashboard with Crimson Tactical theme integration
+// OMEN-X COMMAND CENTER & INTELLIGENCE DASHBOARD
+// Dark Glassmorphic Intelligence Dashboard (OSIRIS-inspired)
+// Categorized Icon-Grid Tool Launcher with Real-time Filtering
 // =========================================================
-
 public class DashboardUI {
 
-    // =========================================================
-    // COLOR PALETTE (Tactical Crimson Unified)
-    // =========================================================
-
-    private static final String BG          = "#090C12";
-    private static final String TEXT        = "#F1F5F9";
-    private static final String MUTED       = "#788698";
-
-    private static final String GREEN       = "#22C55E";
-    private static final String RED         = "#DC2626";
-    private static final String YELLOW      = "#EAB308";
-
-    // =========================================================
-    // CALLBACKS & COMPONENTS
-    // =========================================================
+    private static final String TEXT   = "#F1F5F9";
+    private static final String MUTED  = "#64748B";
+    private static final String CYAN   = "#22D3EE";
+    private static final String GREEN  = "#10B981";
+    private static final String RED    = "#EF4444";
+    private static final String AMBER  = "#F59E0B";
 
     private final ModuleAction moduleAction;
 
@@ -38,56 +31,75 @@ public class DashboardUI {
     private Label findingsLabel;
     private VBox recentActivityBox;
 
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
+    // Filter and Tool Launcher state
+    private final List<ModuleCardItem> allModuleCards = new ArrayList<>();
+    private final Map<String, VBox> categorySections = new LinkedHashMap<>();
+    private Label filterCountLabel;
 
     public DashboardUI(ModuleAction moduleAction) {
         this.moduleAction = moduleAction;
     }
 
+    // Module item data structure for categorized launcher
+    private static class ModuleCardItem {
+        final String id;
+        final String title;
+        final String category;
+        final String icon;
+        final String tag;
+        final String description;
+        final Runnable action;
+        final VBox cardNode;
+
+        ModuleCardItem(String id, String title, String category, String icon, String tag, String description, Runnable action, VBox cardNode) {
+            this.id = id;
+            this.title = title;
+            this.category = category;
+            this.icon = icon;
+            this.tag = tag;
+            this.description = description;
+            this.action = action;
+            this.cardNode = cardNode;
+        }
+
+        boolean matches(String query) {
+            if (query == null || query.isBlank()) return true;
+            String q = query.toLowerCase().trim();
+            return id.toLowerCase().contains(q) ||
+                    title.toLowerCase().contains(q) ||
+                    category.toLowerCase().contains(q) ||
+                    tag.toLowerCase().contains(q) ||
+                    description.toLowerCase().contains(q);
+        }
+    }
+
     // =========================================================
     // CREATE DASHBOARD
     // =========================================================
-
     public VBox createDashboard(List<ScanRecord> history) {
+        allModuleCards.clear();
+        categorySections.clear();
 
-        // =====================================================
-        // TOP HEADER HERO (Using Standardized AppHeader)
-        // =====================================================
-
+        // ── Standardized Header ──
         AppHeader header = new AppHeader(
                 "//>",
-                "INTELLIGENCE DASHBOARD",
-                "Real-time reconnaissance, threat intelligence & EXIF forensics",
+                "COMMAND CENTER & INTELLIGENCE DASHBOARD",
+                "Unified reconnaissance, threat analysis & media forensics engine",
                 null,
-                false // Hide back button on dashboard
+                false
         );
         header.setStatus(AppHeader.StatusType.ONLINE, "SYSTEMS ONLINE");
 
-        Label activeModulesBadge = new Label("8 MODULES");
-        activeModulesBadge.getStyleClass().addAll("badge", "badge-red");
+        Label activeModulesBadge = new Label("9 / 9 MODULES ONLINE");
+        activeModulesBadge.getStyleClass().addAll("badge", "badge-cyan");
         activeModulesBadge.setMinWidth(Region.USE_PREF_SIZE);
         header.addExtraPill(activeModulesBadge);
 
-        // =====================================================
-        // METRICS SECTION
-        // =====================================================
-
-        totalScansLabel = new Label(
-                String.valueOf(history.size())
-        );
-
+        // ── Metrics Grid (Glass Cards) ──
+        totalScansLabel = new Label(String.valueOf(history.size()));
         findingsLabel = new Label(
-                String.valueOf(
-                        history.stream()
-                                .mapToInt(ScanRecord::getFound)
-                                .sum()
-                )
+                String.valueOf(history.stream().mapToInt(ScanRecord::getFound).sum())
         );
-
-        Label modulesLabel = new Label("8");
-        Label statusLabel = new Label("READY");
 
         GridPane metricsGrid = new GridPane();
         metricsGrid.setHgap(14);
@@ -100,231 +112,146 @@ public class DashboardUI {
             metricsGrid.getColumnConstraints().add(col);
         }
 
-        metricsGrid.add(
-                createMetricCard(
-                        "TOTAL SCANS",
-                        totalScansLabel,
-                        "Investigations executed",
-                        RED,
-                        "metric-accent-red"
-                ),
-                0, 0
-        );
-
-        metricsGrid.add(
-                createMetricCard(
-                        "FINDINGS",
-                        findingsLabel,
-                        "Matches & hits identified",
-                        GREEN,
-                        "metric-accent-green"
-                ),
-                1, 0
-        );
-
-        metricsGrid.add(
-                createMetricCard(
-                        "ACTIVE MODULES",
-                        modulesLabel,
-                        "Intel sources online",
-                        RED,
-                        "metric-accent-red"
-                ),
-                2, 0
-        );
-
-        metricsGrid.add(
-                createMetricCard(
-                        "ENGINE STATUS",
-                        statusLabel,
-                        "High performance operational",
-                        YELLOW,
-                        "metric-accent-yellow"
-                ),
-                3, 0
-        );
+        metricsGrid.add(createMetricCard("TOTAL SCANS", totalScansLabel, "Investigations logged", CYAN, "metric-accent-cyan"), 0, 0);
+        metricsGrid.add(createMetricCard("FINDINGS IDENTIFIED", findingsLabel, "Threats & intelligence hits", GREEN, "metric-accent-green"), 1, 0);
+        metricsGrid.add(createMetricCard("ACTIVE MODULES", new Label("9"), "Recon & forensic tools", CYAN, "metric-accent-cyan"), 2, 0);
+        metricsGrid.add(createMetricCard("ENGINE STATUS", new Label("OPERATIONAL"), "Threat feeds ready", AMBER, "metric-accent-amber"), 3, 0);
 
         // =====================================================
-        // INTELLIGENCE MODULES GRID
+        // CATEGORIZED ICON-GRID TOOL LAUNCHER PANEL
         // =====================================================
+        VBox toolLauncherPanel = new VBox(16);
+        toolLauncherPanel.getStyleClass().add("glass-panel");
+        toolLauncherPanel.setPadding(new Insets(0, 0, 18, 0));
 
-        Label modulesTitle = new Label("INTELLIGENCE MODULES");
-        modulesTitle.setStyle(
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-font-size: 15px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-letter-spacing: 1.5px;"
+        // Standardized Panel Header Pattern
+        HBox launcherHeader = AppHeader.createPanelHeader(
+                "◈",
+                "INTELLIGENCE TOOL LAUNCHER & MODULE INDEX",
+                "ONLINE",
+                AppHeader.StatusType.ONLINE,
+                "9 TOOLS"
         );
 
-        Label modulesSub = new Label("Select an active intelligence module to launch a dedicated workspace");
-        modulesSub.setStyle(
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-font-size: 12px;"
-        );
+        // Filter / Search Input Bar
+        TextField filterInput = new TextField();
+        filterInput.setPromptText("Filter modules by name or capability (e.g. 'osiris', 'username', 'domain', 'threat', 'exif')...");
+        filterInput.getStyleClass().add("filter-input");
+        HBox.setHgrow(filterInput, Priority.ALWAYS);
 
-        VBox modulesHeading = new VBox(4, modulesTitle, modulesSub);
+        filterCountLabel = new Label("SHOWING 9 OF 9 TOOLS");
+        filterCountLabel.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold;");
 
-        GridPane moduleGrid = new GridPane();
-        moduleGrid.setHgap(14);
-        moduleGrid.setVgap(14);
+        Button clearFilterBtn = new Button("✕");
+        clearFilterBtn.getStyleClass().add("btn-ghost");
+        clearFilterBtn.setStyle("-fx-padding: 6 10 6 10; -fx-font-size: 10px;");
+        clearFilterBtn.setOnAction(e -> filterInput.clear());
 
-        for (int i = 0; i < 4; i++) {
-            ColumnConstraints col = new ColumnConstraints();
-            col.setPercentWidth(25);
-            col.setHgrow(Priority.ALWAYS);
-            moduleGrid.getColumnConstraints().add(col);
+        HBox filterBar = new HBox(12, filterInput, clearFilterBtn, filterCountLabel);
+        filterBar.setAlignment(Pos.CENTER_LEFT);
+        filterBar.setPadding(new Insets(4, 18, 4, 18));
+
+        // Category Groups Container
+        VBox categoriesContainer = new VBox(18);
+        categoriesContainer.setPadding(new Insets(4, 18, 8, 18));
+
+        // Define the 9 modules grouped into 6 categories
+        registerTool("OSIRIS", "OSIRIS Global OSINT", "GLOBAL RECON & SURVEILLANCE", "[O]>", "3D GEOINT", "Local Next.js 3D threat, satellite & flight intelligence", moduleAction::openOsirisLauncher);
+        registerTool("Username", "Username Recognition", "IDENTITY & PROFILING", "@>", "OSINT RECON", "Search 500+ social & public platforms", () -> moduleAction.open("Username"));
+        registerTool("Phone", "Phone Intel", "TELECOM & CARRIER", "{}>", "TELCO METADATA", "Carrier lookup & validation", () -> moduleAction.open("Phone"));
+        registerTool("Email", "Email Exposure", "THREAT & VULNERABILITY", "#>", "BREACH AUDIT", "Breach records & deliverability", () -> moduleAction.open("Email"));
+        registerTool("Malware Analysis", "Malware Threat Analysis", "THREAT & VULNERABILITY", "!!>", "BINARY STATIC", "File hashes & VirusTotal threat analysis", () -> moduleAction.open("Malware Analysis"));
+        registerTool("IP Address", "IP Geolocation", "NETWORK & INFRASTRUCTURE", "[]>", "GEO / ASN", "Geolocate IP, resolve ASN & reputation", () -> moduleAction.open("IP Address"));
+        registerTool("Domain", "Domain & DNS", "NETWORK & INFRASTRUCTURE", "::>", "DNS / WHOIS", "WHOIS, DNS records & active subdomains", () -> moduleAction.open("Domain"));
+        registerTool("EXIF Metadata", "EXIF Metadata", "MEDIA FORENSICS", "<>", "EXIF / GPS", "Camera signatures & GPS forensics", moduleAction::openImageMetadata);
+        registerTool("Reverse Image", "Reverse Image", "MEDIA FORENSICS", ">>", "VISUAL SEARCH", "Multi-engine visual match indexing", moduleAction::openReverseImage);
+
+        // Build Category sections
+        Map<String, List<ModuleCardItem>> grouped = new LinkedHashMap<>();
+        for (ModuleCardItem item : allModuleCards) {
+            grouped.computeIfAbsent(item.category, k -> new ArrayList<>()).add(item);
         }
 
-        moduleGrid.add(
-                createModuleCard(
-                        "@>  Username Recognition",
-                        "Search 500+ public platforms & social profiles for identity traces.",
-                        "OSINT",
-                        "badge-green",
-                        () -> moduleAction.open("Username")
-                ),
-                0, 0
-        );
+        for (Map.Entry<String, List<ModuleCardItem>> entry : grouped.entrySet()) {
+            String catName = entry.getKey();
+            List<ModuleCardItem> items = entry.getValue();
 
-        moduleGrid.add(
-                createModuleCard(
-                        "#>  Email Exposure",
-                        "Check breach records, domain validity & email account deliverability.",
-                        "BREACH",
-                        "badge-red",
-                        () -> moduleAction.open("Email")
-                ),
-                1, 0
-        );
+            Label catHeader = new Label("// " + catName + " //");
+            catHeader.getStyleClass().add("category-label");
 
-        moduleGrid.add(
-                createModuleCard(
-                        "::>  Domain & DNS",
-                        "Analyze WHOIS records, DNS routing, mail exchange & active subdomains.",
-                        "INFRA",
-                        "badge-red",
-                        () -> moduleAction.open("Domain")
-                ),
-                2, 0
-        );
+            GridPane catGrid = new GridPane();
+            catGrid.setHgap(12);
+            catGrid.setVgap(12);
 
-        moduleGrid.add(
-                createModuleCard(
-                        "[]>  IP Geolocation",
-                        "Geolocate IP, resolve ASN, carrier ISP & query threat reputation.",
-                        "NETWORK",
-                        "badge-yellow",
-                        () -> moduleAction.open("IP Address")
-                ),
-                3, 0
-        );
+            for (int i = 0; i < 4; i++) {
+                ColumnConstraints col = new ColumnConstraints();
+                col.setPercentWidth(25);
+                col.setHgrow(Priority.ALWAYS);
+                catGrid.getColumnConstraints().add(col);
+            }
 
-        moduleGrid.add(
-                createModuleCard(
-                        "{}>  Phone Intel",
-                        "Carrier info, validity, geographic area & telecom metadata.",
-                        "TELECOM",
-                        "badge-yellow",
-                        () -> moduleAction.open("Phone")
-                ),
-                0, 1
-        );
+            int col = 0;
+            int row = 0;
+            for (ModuleCardItem item : items) {
+                catGrid.add(item.cardNode, col, row);
+                col++;
+                if (col >= 4) {
+                    col = 0;
+                    row++;
+                }
+            }
 
-        moduleGrid.add(
-                createModuleCard(
-                        "<>  EXIF Metadata",
-                        "Extract camera models, timestamps, software & GPS coordinates.",
-                        "EXIF",
-                        "badge-green",
-                        moduleAction::openImageMetadata
-                ),
-                1, 1
-        );
+            VBox catSection = new VBox(8, catHeader, catGrid);
+            categorySections.put(catName, catSection);
+            categoriesContainer.getChildren().add(catSection);
+        }
 
-        moduleGrid.add(
-                createModuleCard(
-                        ">>  Reverse Image",
-                        "Identify identical and visually matching imagery across search engines.",
-                        "VISUAL",
-                        "badge-green",
-                        moduleAction::openReverseImage
-                ),
-                2, 1
-        );
+        // Live filtering listener
+        filterInput.textProperty().addListener((obs, oldVal, newVal) -> filterModules(newVal));
 
-        moduleGrid.add(
-                createModuleCard(
-                        "!!>  Malware Analysis",
-                        "Scan file hashes with multi-engine static & VirusTotal threat analysis.",
-                        "THREAT",
-                        "badge-red",
-                        () -> moduleAction.open("Malware Analysis")
-                ),
-                3, 1
-        );
-
-        VBox modulesSection = new VBox(
-                16,
-                modulesHeading,
-                moduleGrid
-        );
-
-        modulesSection.setPadding(new Insets(20));
-        modulesSection.getStyleClass().add("cyber-card");
+        toolLauncherPanel.getChildren().addAll(launcherHeader, filterBar, categoriesContainer);
 
         // =====================================================
-        // RECENT ACTIVITY FEED
+        // RECENT INVESTIGATION LOGS PANEL
         // =====================================================
+        VBox recentSection = new VBox(12);
+        recentSection.getStyleClass().add("glass-panel");
+        recentSection.setPadding(new Insets(0, 0, 16, 0));
 
-        Label recentTitle = new Label("RECENT INVESTIGATION LOGS");
-        recentTitle.setStyle(
-                "-fx-text-fill: " + TEXT + ";" +
-                "-fx-font-size: 15px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-letter-spacing: 1.5px;"
+        HBox recentHeader = AppHeader.createPanelHeader(
+                "::>",
+                "RECENT INVESTIGATION LOGS",
+                "LIVE",
+                AppHeader.StatusType.ONLINE,
+                history.size() + " ENTRIES"
         );
 
         recentActivityBox = new VBox(8);
+        recentActivityBox.setPadding(new Insets(4, 18, 4, 18));
         refreshRecentActivity(history);
 
-        VBox recentSection = new VBox(
-                12,
-                recentTitle,
-                recentActivityBox
-        );
+        recentSection.getChildren().addAll(recentHeader, recentActivityBox);
 
-        recentSection.setPadding(new Insets(20));
-        recentSection.getStyleClass().add("cyber-card");
-
-        // =====================================================
-        // FOOTER NOTICE
-        // =====================================================
-
+        // Footer Notice
         Label notice = new Label(
-                "OMEN-X platform queries open-source & public intelligence databases only. Operate within legal boundaries."
+                "OMEN-X platform queries open-source & public intelligence databases only. Verify authorizations before executing scans."
         );
-        notice.setStyle(
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-font-size: 11px;"
-        );
+        notice.setStyle("-fx-text-fill: #475569; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px;");
         notice.setAlignment(Pos.CENTER);
         notice.setMaxWidth(Double.MAX_VALUE);
 
-        // =====================================================
-        // CONTAINER LAYOUT
-        // =====================================================
-
+        // Assemble Layout
         VBox content = new VBox(
                 20,
                 header,
                 metricsGrid,
-                modulesSection,
+                toolLauncherPanel,
                 recentSection,
                 notice
         );
 
-        content.setPadding(new Insets(24, 28, 24, 28));
-        content.setStyle("-fx-background-color: " + BG + ";");
+        content.setPadding(new Insets(20, 26, 24, 26));
+        content.setStyle("-fx-background-color: #060810;");
 
         ScrollPane scroll = new ScrollPane(content);
         scroll.setFitToWidth(true);
@@ -337,72 +264,131 @@ public class DashboardUI {
         return wrapper;
     }
 
-    // =========================================================
-    // REFRESH DASHBOARD METRICS
-    // =========================================================
+    private void registerTool(String id, String title, String category, String icon, String tag, String description, Runnable action) {
+        VBox card = createToolCard(icon, title, tag, description, action);
+        ModuleCardItem item = new ModuleCardItem(id, title, category, icon, tag, description, action, card);
+        allModuleCards.add(item);
+    }
+
+    private void filterModules(String query) {
+        int visibleCount = 0;
+        Map<String, Integer> categoryVisibleCounts = new LinkedHashMap<>();
+
+        for (ModuleCardItem item : allModuleCards) {
+            boolean matches = item.matches(query);
+            item.cardNode.setVisible(matches);
+            item.cardNode.setManaged(matches);
+            if (matches) {
+                visibleCount++;
+                categoryVisibleCounts.put(item.category, categoryVisibleCounts.getOrDefault(item.category, 0) + 1);
+            }
+        }
+
+        // Show/hide category headers if all cards inside are hidden
+        categorySections.forEach((catName, section) -> {
+            boolean hasVisible = categoryVisibleCounts.getOrDefault(catName, 0) > 0;
+            section.setVisible(hasVisible);
+            section.setManaged(hasVisible);
+        });
+
+        if (filterCountLabel != null) {
+            filterCountLabel.setText("SHOWING " + visibleCount + " OF " + allModuleCards.size() + " TOOLS");
+        }
+    }
+
+    // Tool card builder (Icon centered on top, label below, subtle border, cyan glow on hover)
+    private VBox createToolCard(String iconStr, String titleStr, String tagStr, String descStr, Runnable action) {
+        Label icon = new Label(iconStr);
+        icon.getStyleClass().add("tool-card-icon");
+
+        Label title = new Label(titleStr.toUpperCase());
+        title.getStyleClass().add("tool-card-label");
+        title.setWrapText(true);
+
+        Label tag = new Label(tagStr);
+        tag.getStyleClass().add("tool-card-tag");
+
+        Label desc = new Label(descStr);
+        desc.setStyle("-fx-text-fill: #64748B; -fx-font-size: 10px; -fx-alignment: center;");
+        desc.setWrapText(true);
+        desc.setMaxWidth(Double.MAX_VALUE);
+        desc.setAlignment(Pos.CENTER);
+
+        VBox card = new VBox(6, icon, title, tag, desc);
+        card.getStyleClass().add("tool-card");
+        card.setAlignment(Pos.CENTER);
+        card.setMinHeight(120);
+        card.setPrefHeight(128);
+        card.setMaxWidth(Double.MAX_VALUE);
+
+        card.setOnMouseClicked(e -> action.run());
+        return card;
+    }
+
+    // Metric card builder
+    private VBox createMetricCard(String title, Label value, String description, String accentColor, String accentClass) {
+        Label titleLabel = new Label(title);
+        titleLabel.setStyle(
+                "-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px; -fx-font-weight: bold; -fx-letter-spacing: 1px;"
+        );
+
+        value.setStyle(
+                "-fx-text-fill: " + accentColor + "; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 24px; -fx-font-weight: 800;"
+        );
+
+        Label desc = new Label(description);
+        desc.setStyle("-fx-text-fill: #64748B; -fx-font-size: 10px;");
+
+        VBox card = new VBox(6, titleLabel, value, desc);
+        card.setMaxWidth(Double.MAX_VALUE);
+        card.setPrefHeight(100);
+        card.setPadding(new Insets(14, 16, 14, 16));
+        card.getStyleClass().addAll("glass-panel", accentClass);
+
+        return card;
+    }
 
     public void refreshDashboard(List<ScanRecord> history) {
         if (history == null) return;
-
-        if (totalScansLabel != null) {
-            totalScansLabel.setText(String.valueOf(history.size()));
-        }
-
+        if (totalScansLabel != null) totalScansLabel.setText(String.valueOf(history.size()));
         if (findingsLabel != null) {
             findingsLabel.setText(
-                    String.valueOf(
-                            history.stream()
-                                    .mapToInt(ScanRecord::getFound)
-                                    .sum()
-                    )
+                    String.valueOf(history.stream().mapToInt(ScanRecord::getFound).sum())
             );
         }
-
         refreshRecentActivity(history);
     }
 
-    // =========================================================
-    // RECENT ACTIVITY FEED
-    // =========================================================
-
     public void refreshRecentActivity(List<ScanRecord> history) {
         if (recentActivityBox == null) return;
-
         recentActivityBox.getChildren().clear();
 
         if (history == null || history.isEmpty()) {
-            Label empty = new Label("No investigations run yet. Select an intelligence module above to begin.");
-            empty.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 12px;");
-            empty.setPadding(new Insets(10));
+            Label empty = new Label("No investigations logged yet. Launch a module from the launcher above to begin.");
+            empty.setStyle("-fx-text-fill: #64748B; -fx-font-size: 11px;");
+            empty.setPadding(new Insets(8));
             recentActivityBox.getChildren().add(empty);
             return;
         }
 
         int limit = Math.min(6, history.size());
         for (int i = history.size() - 1; i >= history.size() - limit; i--) {
-            recentActivityBox.getChildren().add(
-                    createRecentRow(history.get(i))
-            );
+            recentActivityBox.getChildren().add(createRecentRow(history.get(i)));
         }
     }
 
-    // =========================================================
-    // RECENT ACTIVITY ROW
-    // =========================================================
-
     private HBox createRecentRow(ScanRecord record) {
-        Label type = new Label(record.getType());
-        type.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 12px; -fx-font-weight: bold;");
-        type.setMinWidth(130);
+        Label type = new Label(record.getType().toUpperCase());
+        type.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
+        type.setMinWidth(140);
 
         Label target = new Label(record.getTarget());
-        target.setStyle("-fx-text-fill: #94A3B8; -fx-font-size: 12px;");
+        target.setStyle("-fx-text-fill: #94A3B8; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
         HBox.setHgrow(target, Priority.ALWAYS);
 
         String scanType = record.getType();
         int findings = record.getFound();
 
-        // Choose a meaningful label based on scan type and finding count
         String badgeText;
         String badgeStyle;
         if (findings > 0) {
@@ -427,124 +413,20 @@ public class DashboardUI {
         result.setMinWidth(Region.USE_PREF_SIZE);
 
         Label time = new Label(record.getTime());
-        time.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-        time.setMinWidth(80);
+        time.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px;");
+        time.setMinWidth(70);
         time.setAlignment(Pos.CENTER_RIGHT);
 
-        HBox row = new HBox(
-                16,
-                type,
-                target,
-                result,
-                time
-        );
-
+        HBox row = new HBox(16, type, target, result, time);
         row.setAlignment(Pos.CENTER_LEFT);
         row.getStyleClass().add("activity-row");
         return row;
     }
 
-    // =========================================================
-    // METRIC CARD BUILDER
-    // =========================================================
-
-    private VBox createMetricCard(
-            String title,
-            Label value,
-            String description,
-            String accentColor,
-            String accentCssClass
-    ) {
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle(
-                "-fx-text-fill: " + MUTED + ";" +
-                "-fx-font-size: 10px;" +
-                "-fx-font-weight: bold;" +
-                "-fx-letter-spacing: 1px;"
-        );
-
-        value.setStyle(
-                "-fx-text-fill: " + accentColor + ";" +
-                "-fx-font-size: 26px;" +
-                "-fx-font-weight: bold;"
-        );
-
-        Label desc = new Label(description);
-        desc.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px;");
-
-        VBox card = new VBox(
-                6,
-                titleLabel,
-                value,
-                desc
-        );
-
-        card.setMaxWidth(Double.MAX_VALUE);
-        card.setPrefHeight(105);
-        card.setPadding(new Insets(16));
-        card.getStyleClass().addAll("cyber-card", accentCssClass);
-
-        return card;
-    }
-
-    // =========================================================
-    // MODULE CARD BUILDER (Unclippable, Responsive)
-    // =========================================================
-
-    private VBox createModuleCard(
-            String title,
-            String description,
-            String categoryTag,
-            String badgeStyleClass,
-            Runnable action
-    ) {
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-text-fill: " + TEXT + "; -fx-font-size: 13px; -fx-font-weight: bold;");
-        titleLabel.setWrapText(false);
-        HBox.setHgrow(titleLabel, Priority.ALWAYS);
-
-        Label tag = new Label(categoryTag);
-        tag.getStyleClass().addAll("badge", badgeStyleClass);
-        tag.setMinWidth(Region.USE_PREF_SIZE); // Never clipped!
-
-        HBox cardHeader = new HBox(8, titleLabel, tag);
-        cardHeader.setAlignment(Pos.CENTER_LEFT);
-
-        Label desc = new Label(description);
-        desc.setStyle("-fx-text-fill: " + MUTED + "; -fx-font-size: 11px; -fx-line-spacing: 2px;");
-        desc.setWrapText(true);
-        desc.setMinHeight(36);
-        VBox.setVgrow(desc, Priority.ALWAYS);
-
-        Button open = new Button("LAUNCH WORKSPACE  →");
-        open.getStyleClass().add("btn-accent");
-        open.setMaxWidth(Double.MAX_VALUE);
-        open.setOnAction(e -> action.run());
-
-        VBox card = new VBox(
-                12,
-                cardHeader,
-                desc,
-                open
-        );
-
-        card.setMaxWidth(Double.MAX_VALUE);
-        card.setMinHeight(165);
-        card.setPrefHeight(170);
-        card.setPadding(new Insets(16));
-        card.getStyleClass().add("cyber-card-interactive");
-
-        card.setOnMouseClicked(e -> action.run());
-        return card;
-    }
-
-    // =========================================================
-    // CALLBACK INTERFACE
-    // =========================================================
-
     public interface ModuleAction {
         void open(String type);
         void openImageMetadata();
         void openReverseImage();
+        void openOsirisLauncher();
     }
 }
