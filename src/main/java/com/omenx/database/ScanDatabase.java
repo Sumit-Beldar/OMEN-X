@@ -1,6 +1,6 @@
 package com.omenx.database;
 
-import com.omenx.model.ScanRecord;
+import com.omenx.database.model.ScanRecord;
 
 import java.util.ArrayList;
 import java.util.Collections;
