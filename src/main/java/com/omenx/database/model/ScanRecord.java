@@ -1,20 +1,11 @@
 package com.omenx.database.model;
 
-// =========================================================
-// SCAN RECORD
-// Stores one completed investigation for Recent Activity.
-// =========================================================
-
 public class ScanRecord {
 
     private final String type;
     private final String target;
     private final int found;
     private final String time;
-
-    // =========================================================
-    // CONSTRUCTOR
-    // =========================================================
 
     public ScanRecord(
             String type,
@@ -27,10 +18,6 @@ public class ScanRecord {
         this.found = found;
         this.time = time;
     }
-
-    // =========================================================
-    // GETTERS
-    // =========================================================
 
     public String getType() {
         return type;

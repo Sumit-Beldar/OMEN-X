@@ -1,0 +1,17 @@
+# =========================================================
+# OMEN-X CONFIGURATION TEMPLATE
+# Copy to config.properties and fill in your credentials.
+# =========================================================
+
+# OSINT Scanner API Keys
+QUANTICDATA_API_KEY=
+abuseipdb_api_key=
+ABSTRACT_PHONE_API_KEY=
+virustotal_api_key=
+
+# SMTP Email Verification Configuration
+smtp.host=
+smtp.port=587
+smtp.username=
+smtp.password=
+smtp.from.email=

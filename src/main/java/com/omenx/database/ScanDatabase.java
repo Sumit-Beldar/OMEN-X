@@ -2,66 +2,33 @@ package com.omenx.database;
 
 import com.omenx.database.model.ScanRecord;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-// =========================================================
-// SCAN DATABASE
-// Stores investigation history during the application session.
-// =========================================================
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ScanDatabase {
 
-    private final List<ScanRecord> records =
-            new ArrayList<>();
-
-    // =========================================================
-    // ADD RECORD
-    // =========================================================
+    private final List<ScanRecord> records = new CopyOnWriteArrayList<>();
 
     public void addRecord(ScanRecord record) {
-
         if (record != null) {
             records.add(record);
         }
     }
 
-    // =========================================================
-    // GET ALL RECORDS
-    // =========================================================
-
     public List<ScanRecord> getAllRecords() {
-
-        return Collections.unmodifiableList(
-                records
-        );
+        return Collections.unmodifiableList(records);
     }
 
-    // =========================================================
-    // GET RECORD COUNT
-    // =========================================================
-
     public int getRecordCount() {
-
         return records.size();
     }
 
-    // =========================================================
-    // CLEAR RECORDS
-    // =========================================================
-
     public void clear() {
-
         records.clear();
     }
 
-    // =========================================================
-    // CHECK IF EMPTY
-    // =========================================================
-
     public boolean isEmpty() {
-
         return records.isEmpty();
     }
 }
