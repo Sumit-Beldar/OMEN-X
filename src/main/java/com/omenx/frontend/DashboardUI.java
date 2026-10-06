@@ -156,7 +156,7 @@ public class DashboardUI {
 
         // Define the 9 modules grouped into 6 categories
         registerTool("OSIRIS", "OSIRIS Global OSINT", "GLOBAL RECON & SURVEILLANCE", ModuleIcons.get("OSIRIS"), "3D GEOINT", "Local Next.js 3D threat, satellite & flight intelligence", moduleAction::openOsirisLauncher);
-        registerTool("Username", "Username Recognition", "IDENTITY & PROFILING", ModuleIcons.get("Username"), "OSINT RECON", "Search 500+ social & public platforms", () -> moduleAction.open("Username"));
+        registerTool("Username", "Username Recognition", "IDENTITY & PROFILING", ModuleIcons.get("Username"), "OSINT RECON", "Search social & public platforms", () -> moduleAction.open("Username"));
         registerTool("Phone", "Phone Intel", "TELECOM & CARRIER", ModuleIcons.get("Phone"), "TELCO METADATA", "Carrier lookup & validation", () -> moduleAction.open("Phone"));
         registerTool("Email", "Email Exposure", "THREAT & VULNERABILITY", ModuleIcons.get("Email"), "BREACH AUDIT", "Breach records & deliverability", () -> moduleAction.open("Email"));
         registerTool("Malware Analysis", "Malware Threat Analysis", "THREAT & VULNERABILITY", ModuleIcons.get("Malware Analysis"), "BINARY STATIC", "File hashes & VirusTotal threat analysis", () -> moduleAction.open("Malware Analysis"));

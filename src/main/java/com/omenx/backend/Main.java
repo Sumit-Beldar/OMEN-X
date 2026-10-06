@@ -497,7 +497,7 @@ public class Main extends Application {
         scanHeader = new AppHeader(
                 ModuleIcons.get("Username"),
                 "USERNAME RECOGNITION",
-                "Search 500+ public platforms & social profiles",
+                "Search public platforms & social profiles",
                 this::showDashboard
         );
 
@@ -672,7 +672,7 @@ public class Main extends Application {
             default -> {
                 scanHeader.setHeaderIcon(ModuleIcons.get("Username"));
                 scanHeader.setHeaderTitle("USERNAME RECOGNITION");
-                scanHeader.setHeaderSubtitle("Search 500+ public platforms & social profiles for traces");
+                scanHeader.setHeaderSubtitle("Search public platforms & social profiles for traces");
                 targetField.setPromptText("Enter username…");
             }
         }
@@ -888,8 +888,6 @@ public class Main extends Application {
         addDomainRow("Updated", data.get("whois_updated"));
         addDomainRow("WHOIS Server", data.get("whois_server"));
 
-        resultsContainer.getChildren().add(createSectionHeader("Reputation"));
-        addDomainRow("Blacklist Status", data.get("reputation"));
     }
 
     private void addDomainRow(String label, String value) {
