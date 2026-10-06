@@ -75,7 +75,8 @@ public class EmailService {
     }
 
     public boolean isConfigured() {
-        return smtpHost != null && !smtpHost.isBlank() && !smtpHost.equalsIgnoreCase("smtp.example.com");
+        return smtpHost != null && !smtpHost.isBlank() && !smtpHost.equalsIgnoreCase("smtp.example.com")
+                && !smtpHost.equals("YOUR_KEY_HERE") && !smtpHost.startsWith("YOUR_");
     }
 
     public SendResult sendVerificationCode(String recipientEmail, String username, String code) {

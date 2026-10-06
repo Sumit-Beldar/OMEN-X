@@ -555,7 +555,9 @@ public class IPScanner {
         // -----------------------------------------------------
 
         if (abuseApiKey == null ||
-                abuseApiKey.isBlank()) {
+                abuseApiKey.isBlank() ||
+                abuseApiKey.equals("YOUR_KEY_HERE") ||
+                abuseApiKey.startsWith("YOUR_")) {
 
             result.status =
                     "API key not configured";

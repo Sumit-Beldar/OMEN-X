@@ -4,14 +4,14 @@
 # =========================================================
 
 # OSINT Scanner API Keys
-QUANTICDATA_API_KEY=
-abuseipdb_api_key=
-ABSTRACT_PHONE_API_KEY=
-virustotal_api_key=
+QUANTICDATA_API_KEY=YOUR_KEY_HERE
+abuseipdb_api_key=YOUR_KEY_HERE
+ABSTRACT_PHONE_API_KEY=YOUR_KEY_HERE
+virustotal_api_key=YOUR_KEY_HERE
 
 # SMTP Email Verification Configuration
-smtp.host=
+smtp.host=YOUR_KEY_HERE
 smtp.port=587
-smtp.username=
-smtp.password=
-smtp.from.email=
+smtp.username=YOUR_KEY_HERE
+smtp.password=YOUR_KEY_HERE
+smtp.from.email=YOUR_KEY_HERE

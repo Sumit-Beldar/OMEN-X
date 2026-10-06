@@ -96,11 +96,12 @@ public class ReverseImageScanner {
                     );
 
             if (apiKey == null ||
-                    apiKey.isBlank()) {
+                    apiKey.isBlank() ||
+                    apiKey.equals("YOUR_KEY_HERE") ||
+                    apiKey.startsWith("YOUR_")) {
 
-                throw new IOException(
-                        "QUANTICDATA_API_KEY is missing"
-                );
+                apiKey = null;
+                return;
             }
 
         } catch (Exception e) {
@@ -186,10 +187,12 @@ public class ReverseImageScanner {
         }
 
         if (apiKey == null ||
-                apiKey.isBlank()) {
+                apiKey.isBlank() ||
+                apiKey.equals("YOUR_KEY_HERE") ||
+                apiKey.startsWith("YOUR_")) {
 
             throw new IOException(
-                    "QuanticData API key is not configured."
+                    "API key not configured"
             );
         }
 

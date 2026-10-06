@@ -345,7 +345,9 @@ public class PhoneScanner {
 
         if (abstractApiKey == null ||
                 abstractApiKey.isBlank() ||
-                abstractApiKey.equals("YOUR_API_KEY")) {
+                abstractApiKey.equals("YOUR_API_KEY") ||
+                abstractApiKey.equals("YOUR_KEY_HERE") ||
+                abstractApiKey.startsWith("YOUR_")) {
 
             return AbstractResult.notAvailable(
                     "API key not configured"

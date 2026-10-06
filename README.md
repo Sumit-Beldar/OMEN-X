@@ -306,6 +306,15 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users (email COLLATE NOCASE);
 
 ## Configuration
 
+To configure API keys and SMTP credentials:
+
+1. Copy the template to `src/main/resources/config.properties`:
+   ```bash
+   cp src/main/resources/config.properties.example src/main/resources/config.properties
+   ```
+2. Open `src/main/resources/config.properties` in an editor and fill in your keys. All keys are optional; if a key is left empty or missing, the affected module will display a friendly message (such as "API key not configured") instead of failing.
+3. `config.properties` is listed in `.gitignore` to prevent committing secrets to version control.
+
 Configuration values are resolved first from System Environment Variables, falling back to `src/main/resources/config.properties`.
 
 ### Environment Variables & Properties
