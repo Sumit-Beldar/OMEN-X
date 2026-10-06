@@ -67,7 +67,7 @@ public class IPAddressUI {
 
         // ── Standardized App Header ──
         header = new AppHeader(
-                "[]>",
+                ModuleIcons.get("IP Address"),
                 "IP GEOLOCATION & NETWORK INTEL",
                 "Geolocate IP, resolve ASN, carrier ISP routing & query abuse reputation",
                 backAction

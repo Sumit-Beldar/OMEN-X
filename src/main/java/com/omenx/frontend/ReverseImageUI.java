@@ -62,7 +62,7 @@ public class ReverseImageUI {
 
         // ── Standardized Header ──
         header = new AppHeader(
-                ">>",
+                ModuleIcons.get("Reverse Image"),
                 "REVERSE IMAGE SEARCH",
                 "Identify identical, visually matching imagery & source domains across search engines",
                 backAction

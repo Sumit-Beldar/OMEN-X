@@ -87,7 +87,7 @@ public class OsirisLauncherUI implements OsirisProgressListener {
     private VBox buildView() {
         // ── Panel Header ──
         appHeader = new AppHeader(
-                "[O]>",
+                ModuleIcons.get("OSIRIS"),
                 "OSIRIS GLOBAL OSINT ENGINE",
                 "Autonomous Next.js 3D threat, satellite, flight & maritime reconnaissance platform",
                 backToDashboardAction,

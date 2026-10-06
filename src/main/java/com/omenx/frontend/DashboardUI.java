@@ -29,7 +29,6 @@ public class DashboardUI {
 
     private Label totalScansLabel;
     private Label findingsLabel;
-    private VBox recentActivityBox;
 
     // Filter and Tool Launcher state
     private final List<ModuleCardItem> allModuleCards = new ArrayList<>();
@@ -82,7 +81,7 @@ public class DashboardUI {
 
         // ── Standardized Header ──
         AppHeader header = new AppHeader(
-                "//>",
+                ModuleIcons.get("Dashboard"),
                 "COMMAND CENTER & INTELLIGENCE DASHBOARD",
                 "Unified reconnaissance, threat analysis & media forensics engine",
                 null,
@@ -156,15 +155,15 @@ public class DashboardUI {
         categoriesContainer.setPadding(new Insets(4, 18, 8, 18));
 
         // Define the 9 modules grouped into 6 categories
-        registerTool("OSIRIS", "OSIRIS Global OSINT", "GLOBAL RECON & SURVEILLANCE", "[O]>", "3D GEOINT", "Local Next.js 3D threat, satellite & flight intelligence", moduleAction::openOsirisLauncher);
-        registerTool("Username", "Username Recognition", "IDENTITY & PROFILING", "@>", "OSINT RECON", "Search 500+ social & public platforms", () -> moduleAction.open("Username"));
-        registerTool("Phone", "Phone Intel", "TELECOM & CARRIER", "{}>", "TELCO METADATA", "Carrier lookup & validation", () -> moduleAction.open("Phone"));
-        registerTool("Email", "Email Exposure", "THREAT & VULNERABILITY", "#>", "BREACH AUDIT", "Breach records & deliverability", () -> moduleAction.open("Email"));
-        registerTool("Malware Analysis", "Malware Threat Analysis", "THREAT & VULNERABILITY", "!!>", "BINARY STATIC", "File hashes & VirusTotal threat analysis", () -> moduleAction.open("Malware Analysis"));
-        registerTool("IP Address", "IP Geolocation", "NETWORK & INFRASTRUCTURE", "[]>", "GEO / ASN", "Geolocate IP, resolve ASN & reputation", () -> moduleAction.open("IP Address"));
-        registerTool("Domain", "Domain & DNS", "NETWORK & INFRASTRUCTURE", "::>", "DNS / WHOIS", "WHOIS, DNS records & active subdomains", () -> moduleAction.open("Domain"));
-        registerTool("EXIF Metadata", "EXIF Metadata", "MEDIA FORENSICS", "<>", "EXIF / GPS", "Camera signatures & GPS forensics", moduleAction::openImageMetadata);
-        registerTool("Reverse Image", "Reverse Image", "MEDIA FORENSICS", ">>", "VISUAL SEARCH", "Multi-engine visual match indexing", moduleAction::openReverseImage);
+        registerTool("OSIRIS", "OSIRIS Global OSINT", "GLOBAL RECON & SURVEILLANCE", ModuleIcons.get("OSIRIS"), "3D GEOINT", "Local Next.js 3D threat, satellite & flight intelligence", moduleAction::openOsirisLauncher);
+        registerTool("Username", "Username Recognition", "IDENTITY & PROFILING", ModuleIcons.get("Username"), "OSINT RECON", "Search 500+ social & public platforms", () -> moduleAction.open("Username"));
+        registerTool("Phone", "Phone Intel", "TELECOM & CARRIER", ModuleIcons.get("Phone"), "TELCO METADATA", "Carrier lookup & validation", () -> moduleAction.open("Phone"));
+        registerTool("Email", "Email Exposure", "THREAT & VULNERABILITY", ModuleIcons.get("Email"), "BREACH AUDIT", "Breach records & deliverability", () -> moduleAction.open("Email"));
+        registerTool("Malware Analysis", "Malware Threat Analysis", "THREAT & VULNERABILITY", ModuleIcons.get("Malware Analysis"), "BINARY STATIC", "File hashes & VirusTotal threat analysis", () -> moduleAction.open("Malware Analysis"));
+        registerTool("IP Address", "IP Geolocation", "NETWORK & INFRASTRUCTURE", ModuleIcons.get("IP Address"), "GEO / ASN", "Geolocate IP, resolve ASN & reputation", () -> moduleAction.open("IP Address"));
+        registerTool("Domain", "Domain & DNS", "NETWORK & INFRASTRUCTURE", ModuleIcons.get("Domain"), "DNS / WHOIS", "WHOIS, DNS records & active subdomains", () -> moduleAction.open("Domain"));
+        registerTool("EXIF Metadata", "EXIF Metadata", "MEDIA FORENSICS", ModuleIcons.get("EXIF Metadata"), "EXIF / GPS", "Camera signatures & GPS forensics", moduleAction::openImageMetadata);
+        registerTool("Reverse Image", "Reverse Image", "MEDIA FORENSICS", ModuleIcons.get("Reverse Image"), "VISUAL SEARCH", "Multi-engine visual match indexing", moduleAction::openReverseImage);
 
         // Build Category sections
         Map<String, List<ModuleCardItem>> grouped = new LinkedHashMap<>();
@@ -211,27 +210,6 @@ public class DashboardUI {
 
         toolLauncherPanel.getChildren().addAll(launcherHeader, filterBar, categoriesContainer);
 
-        // =====================================================
-        // RECENT INVESTIGATION LOGS PANEL
-        // =====================================================
-        VBox recentSection = new VBox(12);
-        recentSection.getStyleClass().add("glass-panel");
-        recentSection.setPadding(new Insets(0, 0, 16, 0));
-
-        HBox recentHeader = AppHeader.createPanelHeader(
-                "::>",
-                "RECENT INVESTIGATION LOGS",
-                "LIVE",
-                AppHeader.StatusType.ONLINE,
-                history.size() + " ENTRIES"
-        );
-
-        recentActivityBox = new VBox(8);
-        recentActivityBox.setPadding(new Insets(4, 18, 4, 18));
-        refreshRecentActivity(history);
-
-        recentSection.getChildren().addAll(recentHeader, recentActivityBox);
-
         // Footer Notice
         Label notice = new Label(
                 "OMEN-X platform queries open-source & public intelligence databases only. Verify authorizations before executing scans."
@@ -246,7 +224,6 @@ public class DashboardUI {
                 header,
                 metricsGrid,
                 toolLauncherPanel,
-                recentSection,
                 notice
         );
 
@@ -356,71 +333,6 @@ public class DashboardUI {
                     String.valueOf(history.stream().mapToInt(ScanRecord::getFound).sum())
             );
         }
-        refreshRecentActivity(history);
-    }
-
-    public void refreshRecentActivity(List<ScanRecord> history) {
-        if (recentActivityBox == null) return;
-        recentActivityBox.getChildren().clear();
-
-        if (history == null || history.isEmpty()) {
-            Label empty = new Label("No investigations logged yet. Launch a module from the launcher above to begin.");
-            empty.setStyle("-fx-text-fill: #64748B; -fx-font-size: 11px;");
-            empty.setPadding(new Insets(8));
-            recentActivityBox.getChildren().add(empty);
-            return;
-        }
-
-        int limit = Math.min(6, history.size());
-        for (int i = history.size() - 1; i >= history.size() - limit; i--) {
-            recentActivityBox.getChildren().add(createRecentRow(history.get(i)));
-        }
-    }
-
-    private HBox createRecentRow(ScanRecord record) {
-        Label type = new Label(record.getType().toUpperCase());
-        type.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
-        type.setMinWidth(140);
-
-        Label target = new Label(record.getTarget());
-        target.setStyle("-fx-text-fill: #94A3B8; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
-        HBox.setHgrow(target, Priority.ALWAYS);
-
-        String scanType = record.getType();
-        int findings = record.getFound();
-
-        String badgeText;
-        String badgeStyle;
-        if (findings > 0) {
-            if ("Email".equals(scanType)) {
-                badgeText = "BREACH";
-            } else if ("Malware Analysis".equals(scanType)) {
-                badgeText = "MALICIOUS";
-            } else if ("IP Address".equals(scanType)) {
-                badgeText = "AT RISK";
-            } else {
-                badgeText = findings + " MATCHES";
-            }
-            badgeStyle = "badge-red";
-        } else {
-            badgeText = "CLEAN";
-            badgeStyle = "badge-green";
-        }
-
-        Label result = new Label(badgeText);
-        result.getStyleClass().add("badge");
-        result.getStyleClass().add(badgeStyle);
-        result.setMinWidth(Region.USE_PREF_SIZE);
-
-        Label time = new Label(record.getTime());
-        time.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px;");
-        time.setMinWidth(70);
-        time.setAlignment(Pos.CENTER_RIGHT);
-
-        HBox row = new HBox(16, type, target, result, time);
-        row.setAlignment(Pos.CENTER_LEFT);
-        row.getStyleClass().add("activity-row");
-        return row;
     }
 
     public interface ModuleAction {

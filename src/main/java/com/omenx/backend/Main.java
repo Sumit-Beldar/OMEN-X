@@ -28,6 +28,7 @@ import com.omenx.frontend.IPAddressUI;
 import com.omenx.frontend.MalwareAnalysisUI;
 import com.omenx.frontend.LoginUI;
 import com.omenx.frontend.OsirisLauncherUI;
+import com.omenx.frontend.ModuleIcons;
 import com.omenx.backend.osiris.OsirisConfig;
 import com.omenx.backend.osiris.OsirisRuntimeManager;
 import com.omenx.backend.osiris.OsirisInstaller;
@@ -387,16 +388,16 @@ public class Main extends Application {
 
         sidebar.getChildren().addAll(brand, navLabel);
 
-        addSidebarItem(sidebar, "Dashboard", "//>  Command Center", this::showDashboard);
-        addSidebarItem(sidebar, "OSIRIS", "[O]>  OSIRIS Platform", this::openOsirisLauncher);
-        addSidebarItem(sidebar, "Username", "@>  Username Recognition", () -> openModule("Username"));
-        addSidebarItem(sidebar, "Email", "#>  Email Exposure", () -> openModule("Email"));
-        addSidebarItem(sidebar, "Domain", "::>  Domain & DNS", () -> openModule("Domain"));
-        addSidebarItem(sidebar, "IP Address", "[]>  IP Geolocation", () -> openModule("IP Address"));
-        addSidebarItem(sidebar, "Phone", "{}>  Phone Intel", () -> openModule("Phone"));
-        addSidebarItem(sidebar, "EXIF Metadata", "<>  EXIF Metadata", this::openImageMetadata);
-        addSidebarItem(sidebar, "Reverse Image", ">>  Reverse Image", this::openReverseImageScanner);
-        addSidebarItem(sidebar, "Malware Analysis", "!!>  Malware Threat", this::openMalwareAnalysis);
+        addSidebarItem(sidebar, "Dashboard", "Command Center", this::showDashboard);
+        addSidebarItem(sidebar, "OSIRIS", "OSIRIS Platform", this::openOsirisLauncher);
+        addSidebarItem(sidebar, "Username", "Username Recognition", () -> openModule("Username"));
+        addSidebarItem(sidebar, "Email", "Email Exposure", () -> openModule("Email"));
+        addSidebarItem(sidebar, "Domain", "Domain & DNS", () -> openModule("Domain"));
+        addSidebarItem(sidebar, "IP Address", "IP Geolocation", () -> openModule("IP Address"));
+        addSidebarItem(sidebar, "Phone", "Phone Intel", () -> openModule("Phone"));
+        addSidebarItem(sidebar, "EXIF Metadata", "EXIF Metadata", this::openImageMetadata);
+        addSidebarItem(sidebar, "Reverse Image", "Reverse Image", this::openReverseImageScanner);
+        addSidebarItem(sidebar, "Malware Analysis", "Malware Threat", this::openMalwareAnalysis);
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
@@ -446,8 +447,15 @@ public class Main extends Application {
     }
 
     private void addSidebarItem(VBox sidebar, String key, String text, Runnable action) {
-        Button btn = new Button(text);
+        Label iconLbl = new Label(com.omenx.frontend.ModuleIcons.get(key));
+        iconLbl.setMinWidth(22);
+        iconLbl.setPrefWidth(22);
+        iconLbl.setAlignment(Pos.CENTER);
+        iconLbl.setStyle("-fx-font-size: 13px;");
+
+        Button btn = new Button(text, iconLbl);
         btn.getStyleClass().add("sidebar-button");
+        btn.setGraphicTextGap(10);
         btn.setMaxWidth(Double.MAX_VALUE);
         btn.setOnAction(e -> {
             action.run();
@@ -487,7 +495,7 @@ public class Main extends Application {
     private VBox createScanView() {
 
         scanHeader = new AppHeader(
-                "@>",
+                ModuleIcons.get("Username"),
                 "USERNAME RECOGNITION",
                 "Search 500+ public platforms & social profiles",
                 this::showDashboard
@@ -644,25 +652,25 @@ public class Main extends Application {
 
         switch (type) {
             case "Email" -> {
-                scanHeader.setHeaderIcon("#>");
+                scanHeader.setHeaderIcon(ModuleIcons.get("Email"));
                 scanHeader.setHeaderTitle("EMAIL EXPOSURE");
                 scanHeader.setHeaderSubtitle("Check breach records, domain validity & email deliverability");
                 targetField.setPromptText("Enter email address (e.g. user@target.com)…");
             }
             case "Domain" -> {
-                scanHeader.setHeaderIcon("::>");
+                scanHeader.setHeaderIcon(ModuleIcons.get("Domain"));
                 scanHeader.setHeaderTitle("DOMAIN & DNS INTEL");
                 scanHeader.setHeaderSubtitle("Analyze WHOIS records, DNS routing & active subdomains");
                 targetField.setPromptText("Enter domain name (e.g. example.com)…");
             }
             case "Phone" -> {
-                scanHeader.setHeaderIcon("{}>");
+                scanHeader.setHeaderIcon(ModuleIcons.get("Phone"));
                 scanHeader.setHeaderTitle("PHONE INTEL");
                 scanHeader.setHeaderSubtitle("Carrier metadata, validity, geographic area & telecom routing");
                 targetField.setPromptText("Enter phone number with country code (e.g. +14155552671)…");
             }
             default -> {
-                scanHeader.setHeaderIcon("@>");
+                scanHeader.setHeaderIcon(ModuleIcons.get("Username"));
                 scanHeader.setHeaderTitle("USERNAME RECOGNITION");
                 scanHeader.setHeaderSubtitle("Search 500+ public platforms & social profiles for traces");
                 targetField.setPromptText("Enter username…");

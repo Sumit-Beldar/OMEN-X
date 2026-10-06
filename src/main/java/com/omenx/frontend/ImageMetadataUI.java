@@ -50,7 +50,7 @@ public class ImageMetadataUI {
     public VBox createView() {
 
         header = new AppHeader(
-                "<>",
+                ModuleIcons.get("EXIF Metadata"),
                 "EXIF METADATA & FORENSICS",
                 "Extract camera optical signatures, timestamps, hardware profiles & GPS coordinates",
                 backAction
