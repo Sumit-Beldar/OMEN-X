@@ -87,6 +87,11 @@ public class AppHeader extends HBox {
 
     // ── Factory: Reusable Inner Panel Header Pattern ──
     public static HBox createPanelHeader(String iconBracket, String title, String statusText, StatusType statusType, String secondaryStat) {
+        Label statLabel = (secondaryStat != null && !secondaryStat.isBlank()) ? new Label(secondaryStat.toUpperCase()) : null;
+        return createPanelHeader(iconBracket, title, statusText, statusType, statLabel);
+    }
+
+    public static HBox createPanelHeader(String iconBracket, String title, String statusText, StatusType statusType, Label secondaryStatLabel) {
         HBox header = new HBox(10);
         header.setAlignment(Pos.CENTER_LEFT);
         header.setPadding(new Insets(12, 16, 12, 16));
@@ -119,10 +124,11 @@ public class AppHeader extends HBox {
             header.getChildren().add(dot);
         }
 
-        if (secondaryStat != null && !secondaryStat.isBlank()) {
-            Label statBadge = new Label(secondaryStat.toUpperCase());
-            statBadge.getStyleClass().addAll("badge", "badge-cyan");
-            header.getChildren().add(statBadge);
+        if (secondaryStatLabel != null) {
+            if (!secondaryStatLabel.getStyleClass().contains("badge")) {
+                secondaryStatLabel.getStyleClass().addAll("badge", "badge-cyan");
+            }
+            header.getChildren().add(secondaryStatLabel);
         }
 
         Label expand = new Label("⤢");

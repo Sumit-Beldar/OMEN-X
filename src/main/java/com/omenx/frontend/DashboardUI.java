@@ -34,6 +34,8 @@ public class DashboardUI {
     private final List<ModuleCardItem> allModuleCards = new ArrayList<>();
     private final Map<String, VBox> categorySections = new LinkedHashMap<>();
     private Label filterCountLabel;
+    private Label recentEntriesBadge;
+    private VBox recentActivityBox;
 
     public DashboardUI(ModuleAction moduleAction) {
         this.moduleAction = moduleAction;
@@ -210,6 +212,28 @@ public class DashboardUI {
 
         toolLauncherPanel.getChildren().addAll(launcherHeader, filterBar, categoriesContainer);
 
+        // =====================================================
+        // RECENT INVESTIGATION LOGS PANEL
+        // =====================================================
+        VBox recentSection = new VBox(12);
+        recentSection.getStyleClass().add("glass-panel");
+        recentSection.setPadding(new Insets(0, 0, 16, 0));
+
+        recentEntriesBadge = new Label(formatEntriesCount(history != null ? history.size() : 0));
+        HBox recentHeader = AppHeader.createPanelHeader(
+                "◈",
+                "RECENT INVESTIGATION LOGS",
+                "LIVE",
+                AppHeader.StatusType.ONLINE,
+                recentEntriesBadge
+        );
+
+        recentActivityBox = new VBox(8);
+        recentActivityBox.setPadding(new Insets(4, 18, 4, 18));
+        refreshRecentActivity(history);
+
+        recentSection.getChildren().addAll(recentHeader, recentActivityBox);
+
         // Footer Notice
         Label notice = new Label(
                 "OMEN-X platform queries open-source & public intelligence databases only. Verify authorizations before executing scans."
@@ -224,6 +248,7 @@ public class DashboardUI {
                 header,
                 metricsGrid,
                 toolLauncherPanel,
+                recentSection,
                 notice
         );
 
@@ -325,14 +350,90 @@ public class DashboardUI {
         return card;
     }
 
+    private String formatEntriesCount(int count) {
+        return count + (count == 1 ? " ENTRY" : " ENTRIES");
+    }
+
     public void refreshDashboard(List<ScanRecord> history) {
         if (history == null) return;
-        if (totalScansLabel != null) totalScansLabel.setText(String.valueOf(history.size()));
+        int count = history.size();
+        if (totalScansLabel != null) totalScansLabel.setText(String.valueOf(count));
         if (findingsLabel != null) {
             findingsLabel.setText(
                     String.valueOf(history.stream().mapToInt(ScanRecord::getFound).sum())
             );
         }
+        if (recentEntriesBadge != null) {
+            recentEntriesBadge.setText(formatEntriesCount(count));
+        }
+        refreshRecentActivity(history);
+    }
+
+    public void refreshRecentActivity(List<ScanRecord> history) {
+        if (recentEntriesBadge != null && history != null) {
+            recentEntriesBadge.setText(formatEntriesCount(history.size()));
+        }
+        if (recentActivityBox == null) return;
+        recentActivityBox.getChildren().clear();
+
+        if (history == null || history.isEmpty()) {
+            Label empty = new Label("No investigations logged yet. Launch a module from the launcher above to begin.");
+            empty.setStyle("-fx-text-fill: #64748B; -fx-font-size: 11px;");
+            empty.setPadding(new Insets(8));
+            recentActivityBox.getChildren().add(empty);
+            return;
+        }
+
+        int limit = Math.min(6, history.size());
+        for (int i = history.size() - 1; i >= history.size() - limit; i--) {
+            recentActivityBox.getChildren().add(createRecentRow(history.get(i)));
+        }
+    }
+
+    private HBox createRecentRow(ScanRecord record) {
+        Label type = new Label(record.getType().toUpperCase());
+        type.setStyle("-fx-text-fill: #22D3EE; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px; -fx-font-weight: bold;");
+        type.setMinWidth(140);
+
+        Label target = new Label(record.getTarget());
+        target.setStyle("-fx-text-fill: #94A3B8; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 11px;");
+        HBox.setHgrow(target, Priority.ALWAYS);
+
+        String scanType = record.getType();
+        int findings = record.getFound();
+
+        String badgeText;
+        String badgeStyle;
+        if (findings > 0) {
+            if ("Email".equals(scanType)) {
+                badgeText = "BREACH";
+            } else if ("Malware Analysis".equals(scanType)) {
+                badgeText = "MALICIOUS";
+            } else if ("IP Address".equals(scanType)) {
+                badgeText = "AT RISK";
+            } else {
+                badgeText = findings + " MATCHES";
+            }
+            badgeStyle = "badge-red";
+        } else {
+            badgeText = "CLEAN";
+            badgeStyle = "badge-green";
+        }
+
+        Label result = new Label(badgeText);
+        result.getStyleClass().add("badge");
+        result.getStyleClass().add(badgeStyle);
+        result.setMinWidth(Region.USE_PREF_SIZE);
+
+        Label time = new Label(record.getTime());
+        time.setStyle("-fx-text-fill: #64748B; -fx-font-family: 'JetBrains Mono', 'Consolas', monospace; -fx-font-size: 10px;");
+        time.setMinWidth(70);
+        time.setAlignment(Pos.CENTER_RIGHT);
+
+        HBox row = new HBox(16, type, target, result, time);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("activity-row");
+        return row;
     }
 
     public interface ModuleAction {
